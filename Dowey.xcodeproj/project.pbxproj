@@ -1,0 +1,374 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		3B0000000000000000000001 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A0000000000000000000001 /* main.swift */; };
+		3B0000000000000000000002 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A0000000000000000000002 /* AppDelegate.swift */; };
+		3B0000000000000000000003 /* GlobalEventMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A0000000000000000000003 /* GlobalEventMonitor.swift */; };
+		3B0000000000000000000004 /* WindowEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A0000000000000000000004 /* WindowEngine.swift */; };
+		3B0000000000000000000005 /* RadialHUDView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A0000000000000000000005 /* RadialHUDView.swift */; };
+		3B0000000000000000000006 /* PreviewOverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A0000000000000000000006 /* PreviewOverlayView.swift */; };
+		3B0000000000000000000007 /* ZoneMath.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A0000000000000000000007 /* ZoneMath.swift */; };
+		3B0000000000000000000008 /* ZoneMathTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A0000000000000000000009 /* ZoneMathTests.swift */; };
+		3B0000000000000000000009 /* ZoneMath.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A0000000000000000000007 /* ZoneMath.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		4200000000000000000001 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 3F0000000000000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 3E0000000000000000000001;
+			remoteInfo = Dowey;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		3A0000000000000000000001 /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
+		3A0000000000000000000002 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		3A0000000000000000000003 /* GlobalEventMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlobalEventMonitor.swift; sourceTree = "<group>"; };
+		3A0000000000000000000004 /* WindowEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowEngine.swift; sourceTree = "<group>"; };
+		3A0000000000000000000005 /* RadialHUDView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RadialHUDView.swift; sourceTree = "<group>"; };
+		3A0000000000000000000006 /* PreviewOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewOverlayView.swift; sourceTree = "<group>"; };
+		3A0000000000000000000007 /* ZoneMath.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZoneMath.swift; sourceTree = "<group>"; };
+		3A0000000000000000000008 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		3A0000000000000000000009 /* ZoneMathTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZoneMathTests.swift; sourceTree = "<group>"; };
+		3A000000000000000000000A /* Dowey.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Dowey.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		3A000000000000000000000B /* DoweyTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = DoweyTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		3D0000000000000000000002 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		3D0000000000000000000005 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		3C0000000000000000000001 = {
+			isa = PBXGroup;
+			children = (
+				3C0000000000000000000002 /* Dowey */,
+				3C0000000000000000000003 /* DoweyTests */,
+				3C0000000000000000000004 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		3C0000000000000000000002 /* Dowey */ = {
+			isa = PBXGroup;
+			children = (
+				3A0000000000000000000001 /* main.swift */,
+				3A0000000000000000000002 /* AppDelegate.swift */,
+				3A0000000000000000000003 /* GlobalEventMonitor.swift */,
+				3A0000000000000000000004 /* WindowEngine.swift */,
+				3A0000000000000000000005 /* RadialHUDView.swift */,
+				3A0000000000000000000006 /* PreviewOverlayView.swift */,
+				3A0000000000000000000007 /* ZoneMath.swift */,
+				3A0000000000000000000008 /* Info.plist */,
+			);
+			path = Dowey;
+			sourceTree = "<group>";
+		};
+		3C0000000000000000000003 /* DoweyTests */ = {
+			isa = PBXGroup;
+			children = (
+				3A0000000000000000000009 /* ZoneMathTests.swift */,
+			);
+			path = DoweyTests;
+			sourceTree = "<group>";
+		};
+		3C0000000000000000000004 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				3A000000000000000000000A /* Dowey.app */,
+				3A000000000000000000000B /* DoweyTests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		3E0000000000000000000001 /* Dowey */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 4000000000000000000002 /* Build configuration list for PBXNativeTarget "Dowey" */;
+			buildPhases = (
+				3D0000000000000000000001 /* Sources */,
+				3D0000000000000000000002 /* Frameworks */,
+				3D0000000000000000000003 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Dowey;
+			productName = Dowey;
+			productReference = 3A000000000000000000000A /* Dowey.app */;
+			productType = "com.apple.product-type.application";
+		};
+		3E0000000000000000000002 /* DoweyTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 4000000000000000000003 /* Build configuration list for PBXNativeTarget "DoweyTests" */;
+			buildPhases = (
+				3D0000000000000000000004 /* Sources */,
+				3D0000000000000000000005 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				4200000000000000000002 /* PBXTargetDependency */,
+			);
+			name = DoweyTests;
+			productName = DoweyTests;
+			productReference = 3A000000000000000000000B /* DoweyTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		3F0000000000000000000001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1600;
+				LastUpgradeCheck = 1600;
+				TargetAttributes = {
+					3E0000000000000000000001 = {
+						CreatedOnToolsVersion = 16.0;
+					};
+					3E0000000000000000000002 = {
+						CreatedOnToolsVersion = 16.0;
+					};
+				};
+			};
+			buildConfigurationList = 4000000000000000000001 /* Build configuration list for PBXProject "Dowey" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 3C0000000000000000000001;
+			productRefGroup = 3C0000000000000000000004 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				3E0000000000000000000001 /* Dowey */,
+				3E0000000000000000000002 /* DoweyTests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		3D0000000000000000000003 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		3D0000000000000000000001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				3B0000000000000000000001 /* main.swift in Sources */,
+				3B0000000000000000000002 /* AppDelegate.swift in Sources */,
+				3B0000000000000000000003 /* GlobalEventMonitor.swift in Sources */,
+				3B0000000000000000000004 /* WindowEngine.swift in Sources */,
+				3B0000000000000000000005 /* RadialHUDView.swift in Sources */,
+				3B0000000000000000000006 /* PreviewOverlayView.swift in Sources */,
+				3B0000000000000000000007 /* ZoneMath.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		3D0000000000000000000004 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				3B0000000000000000000008 /* ZoneMathTests.swift in Sources */,
+				3B0000000000000000000009 /* ZoneMath.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		4200000000000000000002 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 3E0000000000000000000001 /* Dowey */;
+			targetProxy = 4200000000000000000001 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		4100000000000000000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		4100000000000000000002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		4100000000000000000003 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = "";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_APP_SANDBOX = NO;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				INFOPLIST_FILE = Dowey/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.aaron.dowey;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+			};
+			name = Debug;
+		};
+		4100000000000000000004 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = "";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_APP_SANDBOX = NO;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				INFOPLIST_FILE = Dowey/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.aaron.dowey;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+			};
+			name = Release;
+		};
+		4100000000000000000005 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Manual;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.aaron.dowey.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+			};
+			name = Debug;
+		};
+		4100000000000000000006 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Manual;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.aaron.dowey.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		4000000000000000000001 /* Build configuration list for PBXProject "Dowey" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4100000000000000000001 /* Debug */,
+				4100000000000000000002 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		4000000000000000000002 /* Build configuration list for PBXNativeTarget "Dowey" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4100000000000000000003 /* Debug */,
+				4100000000000000000004 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		4000000000000000000003 /* Build configuration list for PBXNativeTarget "DoweyTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4100000000000000000005 /* Debug */,
+				4100000000000000000006 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 3F0000000000000000000001 /* Project object */;
+}
