@@ -77,6 +77,11 @@ final class GlobalEventMonitor {
     private let hud = RadialHUDController()
     private let preview = PreviewOverlayController()
 
+    /// `NSScreen.screens` allocates a bridged array on every access. During a
+    /// sweep the cursor almost always stays on one display, so the lookup is
+    /// cached for the gesture and redone only when the cursor actually leaves it.
+    private var cachedScreen: NSScreen?
+
     // MARK: - Lifecycle
 
     func start() {
@@ -152,16 +157,22 @@ final class GlobalEventMonitor {
         state = .tracking(origin: origin, zone: zone)
         hud.update(activeZone: zone)
 
-        if let screen = WindowEngine.screen(containing: location) {
-            preview.show(rect: zone.rect(in: screen.visibleFrame), on: screen)
+        if let screen = screen(containing: location) {
+            preview.show(rect: zone.rect(in: screen.visibleFrame))
         }
+    }
+
+    private func screen(containing point: CGPoint) -> NSScreen? {
+        if let cachedScreen, cachedScreen.frame.contains(point) { return cachedScreen }
+        cachedScreen = WindowEngine.screen(containing: point)
+        return cachedScreen
     }
 
     /// Outlines the whole visible frame — what a release inside the deadzone
     /// would produce.
     private func showMaximizePreview(near point: CGPoint) {
-        guard let screen = WindowEngine.screen(containing: point) else { return }
-        preview.show(rect: SnapTarget.maximize.rect(in: screen.visibleFrame), on: screen)
+        guard let screen = screen(containing: point) else { return }
+        preview.show(rect: SnapTarget.maximize.rect(in: screen.visibleFrame))
     }
 
     // MARK: - Commit / cancel
@@ -194,6 +205,7 @@ final class GlobalEventMonitor {
         gestureMonitors.removeAll()
         preview.hide()
         hud.hide()
+        cachedScreen = nil
         state = .idle
     }
 }

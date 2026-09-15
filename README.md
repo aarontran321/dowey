@@ -103,19 +103,65 @@ xcodebuild -project Dowey.xcodeproj -scheme Dowey -configuration Debug test
 
 ---
 
-## Verifying it stays cheap
+## Measured performance
 
-Dowey should be invisible in the process list. To confirm:
+CPU here is measured as exact process CPU-time from `proc_pid_rusage`, divided by
+wall time, expressed against a single core. Each configuration was run three
+times, alternating between builds so system drift could not favour either one.
 
-**Idle.** Open Activity Monitor, search for `Dowey`, select it, and watch the **% CPU** column for about 30 seconds without touching the keyboard or mouse. It should read `0.0` the entire time, with occasional blips no higher than `0.1`. Anything that sits at a steady non-zero number means something is polling and is a bug.
+| Scenario | CPU | What it means |
+|---|---|---|
+| Idle, no input | **0.0005%** | ~5 µs of CPU per second; 5 wakeups per 20 s |
+| Idle, cursor moving (150 events/s) | **0.0000%** | Unmeasurable — 1 wakeup in 8 s |
+| Active gesture, continuous sweep | **0.17%** | 2.27 ms of CPU per full six-zone sweep |
 
-**During a gesture.** Keep Dowey selected in Activity Monitor and perform six or seven snaps in a row — hold 🌐, sweep the mouse around all six zones so the highlight changes repeatedly, release, repeat. `% CPU` should stay under 1% and drop straight back to `0.0` the moment you release. The redraw path only fires when the *active zone changes*, not on every mouse-moved event, so sweeping fast is not meaningfully more expensive than sweeping slowly.
+The active figure is deliberately pessimistic: it comes from a synthetic load of
+1200 mouse events and 10 complete gestures inside 8 seconds, sweeping through all
+six zones twice per gesture. Real use is nowhere near that. At 0.17% of one core
+on a 10-core machine, that is 0.017% of total capacity.
 
-**Memory** should settle around 45 MB and stay flat across many gestures. The two overlay windows are created on first use and then reused; they are `orderOut`'d (not just made transparent) whenever Dowey is idle, so nothing is left warm in the window server.
+The important idle result is the second row. A global `NSEvent` monitor registered
+only for `flagsChanged` is *not* woken by mouse movement — the app stays blocked in
+`mach_msg` and the window server never dispatches to it. Idle cost is therefore
+independent of what the user is doing with the mouse.
 
-Why it costs nothing at rest: there is no timer anywhere in the codebase. While idle, exactly one `flagsChanged` monitor is installed. The mouse-move and Escape monitors are created on Globe key-down and removed on release or cancel, so no mouse handler runs between gestures.
+### Before and after the Core Animation rewrite
 
----
+Both overlays originally rasterized through `draw(_:)`, with the preview drawing
+into a screen-sized view on every zone change. They now hold their appearance as
+layer properties, and the preview *window* is sized to the destination rect, so a
+zone change is a frame change plus two color assignments.
+
+| Metric | Before | After | Change |
+|---|---|---|---|
+| Active gesture CPU | 0.208% | 0.175% | **−16%** |
+| CPU per six-zone sweep | 2.71 ms | 2.27 ms | **−16%** |
+| Interrupt wakeups per run | 569 | 261 | **−54%** |
+| Resident memory | 64.4 MB | 41.5 MB | **−36%** |
+| Idle CPU | 0.0005% | 0.0005% | unchanged |
+
+Idle was already at the floor and did not move, which is the expected result —
+there is no work to remove from a process that is asleep. The wakeup reduction
+matters most for battery: wakeups, not raw CPU percentage, are what prevent the
+package from staying in a low-power state.
+
+## Checking it yourself in Activity Monitor
+
+Open Activity Monitor, search for `Dowey`, select it, and watch the **% CPU**
+column for about 30 seconds without touching anything. It should read `0.0` the
+whole time. Anything that sits at a steady non-zero number means something is
+polling and is a bug.
+
+Then perform six or seven snaps in a row, sweeping the mouse around all six zones
+so the highlight changes repeatedly. `% CPU` should stay well under 1% and drop
+straight back to `0.0` the moment you release. Memory should settle near 40 MB and
+stay flat across many gestures.
+
+Why it costs nothing at rest: there is no timer anywhere in the codebase. While
+idle, exactly one `flagsChanged` monitor is installed and both overlay windows are
+ordered out of the window server. The mouse-move and Escape monitors are created
+on Globe key-down and removed on release or cancel, so no mouse handler runs
+between gestures.
 
 ## Code map
 
