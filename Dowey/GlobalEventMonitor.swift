@@ -112,9 +112,11 @@ final class GlobalEventMonitor {
         let origin = NSEvent.mouseLocation
         state = .armed(origin: origin)
 
-        // Shown immediately but with no zone lit, so there is no popup flicker
-        // when the cursor crosses the deadzone edge.
+        // Shown immediately with the center circle lit and the full-screen
+        // destination already outlined, so the maximize target gets the same
+        // preview treatment as the six directional zones.
         hud.show(at: origin)
+        showMaximizePreview(near: origin)
 
         gestureMonitors = [
             EventMonitorPair(mask: [.mouseMoved, .leftMouseDragged, .rightMouseDragged, .otherMouseDragged]) { [weak self] _ in
@@ -137,7 +139,7 @@ final class GlobalEventMonitor {
             guard case .tracking = state else { return }
             state = .armed(origin: origin)
             hud.update(activeZone: nil)
-            preview.hide()
+            showMaximizePreview(near: location)
             return
         }
 
@@ -153,6 +155,13 @@ final class GlobalEventMonitor {
         if let screen = WindowEngine.screen(containing: location) {
             preview.show(rect: zone.rect(in: screen.visibleFrame), on: screen)
         }
+    }
+
+    /// Outlines the whole visible frame — what a release inside the deadzone
+    /// would produce.
+    private func showMaximizePreview(near point: CGPoint) {
+        guard let screen = WindowEngine.screen(containing: point) else { return }
+        preview.show(rect: SnapTarget.maximize.rect(in: screen.visibleFrame), on: screen)
     }
 
     // MARK: - Commit / cancel

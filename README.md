@@ -15,7 +15,7 @@ Requires macOS 13 or later. Not sandboxed — it moves other apps' windows, whic
 
 | Step | What happens |
 |---|---|
-| Press and hold 🌐 | The radial ring appears at the cursor with its center circle lit — release now and the window maximizes. No segment is lit yet. |
+| Press and hold 🌐 | The radial ring appears at the cursor with its center circle lit, and the whole visible frame is outlined and tinted — release now and the window maximizes. No segment is lit yet. |
 | Move more than 20 pt | The segment for your direction lights up, and the destination is outlined and tinted gray on screen. |
 | Release 🌐 | The frontmost window moves to that destination. |
 | Release inside the center circle | The frontmost window is centered and maximized to fill the visible frame. This is *not* macOS fullscreen: no Space switch, no green-button state, the menu bar and Dock stay put. |
