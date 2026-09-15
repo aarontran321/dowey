@@ -15,8 +15,8 @@ final class PreviewOverlayView: NSView {
     private enum Metrics {
         static let cornerRadius: CGFloat = 10
         static let borderWidth: CGFloat = 2
-        static let fillAlpha: CGFloat = 0.25
-        static let borderAlpha: CGFloat = 0.65
+        static let fillAlpha: CGFloat = 0.82
+        static let borderAlpha: CGFloat = 1.0
     }
 
     /// In view-local coordinates. `nil` draws nothing.
