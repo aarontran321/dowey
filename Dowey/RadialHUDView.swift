@@ -92,6 +92,34 @@ final class RadialHUDView: NSView {
             context.setLineWidth(isActive ? Metrics.activeStrokeWidth : Metrics.strokeWidth)
             context.strokePath()
         }
+
+        drawMaximizeTarget(in: context, center: center, dim: dim, accent: accent)
+    }
+
+    /// The center circle is the maximize target: lit while the cursor is still
+    /// inside the deadzone, dim once a direction has been chosen.
+    ///
+    /// Its radius is read from `ZoneMath` rather than hardcoded, so the circle
+    /// the user aims at is literally the threshold the state machine tests.
+    private func drawMaximizeTarget(in context: CGContext, center: CGPoint, dim: NSColor, accent: NSColor) {
+        let isTargeted = (activeZone == nil)
+        let radius = ZoneMath.deadzoneRadius
+        let circle = CGPath(ellipseIn: CGRect(x: center.x - radius,
+                                              y: center.y - radius,
+                                              width: radius * 2,
+                                              height: radius * 2),
+                            transform: nil)
+
+        if isTargeted {
+            context.addPath(circle)
+            context.setFillColor(accent.withAlphaComponent(0.20).cgColor)
+            context.fillPath()
+        }
+
+        context.addPath(circle)
+        context.setStrokeColor((isTargeted ? accent : dim).cgColor)
+        context.setLineWidth(isTargeted ? Metrics.activeStrokeWidth : Metrics.strokeWidth)
+        context.strokePath()
     }
 }
 

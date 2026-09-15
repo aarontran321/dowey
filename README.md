@@ -15,10 +15,10 @@ Requires macOS 13 or later. Not sandboxed — it moves other apps' windows, whic
 
 | Step | What happens |
 |---|---|
-| Press and hold 🌐 | The radial ring appears at the cursor, no segment lit. Nothing has happened yet. |
+| Press and hold 🌐 | The radial ring appears at the cursor with its center circle lit — release now and the window maximizes. No segment is lit yet. |
 | Move more than 20 pt | The segment for your direction lights up, and the destination is outlined and tinted gray on screen. |
 | Release 🌐 | The frontmost window moves to that destination. |
-| Release inside the 20 pt deadzone | The frontmost window maximizes (fills the visible frame — this is *not* macOS fullscreen, no Space switch). |
+| Release inside the center circle | The frontmost window is centered and maximized to fill the visible frame. This is *not* macOS fullscreen: no Space switch, no green-button state, the menu bar and Dock stay put. |
 | Press Escape at any point | Everything tears down immediately. No window is touched. |
 
 Direction is measured as a standard math angle from where the cursor was when you pressed the key: 0° = right, increasing counterclockwise.
@@ -36,7 +36,7 @@ Ranges are half-open — a boundary angle belongs to the zone that starts there,
 
 Two behaviors worth knowing:
 
-- **Deadzone re-entry.** Moving back inside the 20 pt radius returns the ring to its neutral state and dismisses the preview, so releasing there maximizes. The hollow center of the ring is that target.
+- **Deadzone re-entry.** Moving back inside the 20 pt radius returns the ring to its neutral state and dismisses the preview, so releasing there maximizes. The circle at the center of the ring *is* that target — it is drawn at exactly the 20 pt deadzone radius, and it lights up whenever releasing would maximize.
 - **Which screen.** On a multi-monitor setup, the target is whichever display the *cursor* is on when you release — not the one the window currently sits on. Rects are computed from `NSScreen.visibleFrame`, so the menu bar and Dock are already excluded.
 
 Minimize is not implemented in v1. Zone angles, the trigger key, and the deadzone radius are hardcoded constants.
@@ -125,7 +125,7 @@ Why it costs nothing at rest: there is no timer anywhere in the codebase. While 
 | `AppDelegate.swift` | Launch-time permission check, status item and menu. |
 | `GlobalEventMonitor.swift` | The state machine — Idle → Armed → Tracking → Commit/Cancel — and every event monitor's lifecycle. |
 | `WindowEngine.swift` | Accessibility-API window manipulation; target-screen selection; Cocoa ↔ AX coordinate conversion. |
-| `RadialHUDView.swift` | The ring: arc segments, highlight, draw code. Also `OverlayWindow`, the shared borderless/click-through window used by both overlays. |
+| `RadialHUDView.swift` | The ring: arc segments, highlight, center maximize circle, draw code. Also `OverlayWindow`, the shared borderless/click-through window used by both overlays. |
 | `PreviewOverlayView.swift` | Destination outline and flat gray tint. |
 | `ZoneMath.swift` | Pure geometry: angle from points, angle → zone, zone → rect, deadzone test. No AppKit state, fully unit-tested. |
 
