@@ -8,6 +8,7 @@
 //
 
 import AppKit
+import CoreGraphics
 
 /// Wraps the global + local halves of an NSEvent monitor pair.
 ///
@@ -80,6 +81,13 @@ final class GlobalEventMonitor {
     /// notification fires for both cases, so treat it like Escape.
     private var spaceChangeObserver: NSObjectProtocol?
 
+    /// Last-resort safety net: reads the Globe key's actual hardware state
+    /// instead of trusting any event to arrive. Whatever swallows the
+    /// flagsChanged release (Mission Control, Spotlight, a screen saver...)
+    /// cannot swallow this, because it isn't listening for a delivered event
+    /// at all — it asks the HID system directly. Runs only while armed.
+    private var releaseWatchdog: Timer?
+
     private let hud = RadialHUDController()
     private let preview = PreviewOverlayController()
 
@@ -145,6 +153,13 @@ final class GlobalEventMonitor {
             queue: .main
         ) { [weak self] _ in
             self?.cancel()
+        }
+
+        releaseWatchdog = Timer.scheduledTimer(withTimeInterval: 0.15, repeats: true) { [weak self] _ in
+            guard let self, self.state.isActive else { return }
+            if !CGEventSource.keyState(.combinedSessionState, key: Self.globeKeyCode) {
+                self.cancel()
+            }
         }
     }
 
@@ -221,6 +236,8 @@ final class GlobalEventMonitor {
             NSWorkspace.shared.notificationCenter.removeObserver(spaceChangeObserver)
         }
         spaceChangeObserver = nil
+        releaseWatchdog?.invalidate()
+        releaseWatchdog = nil
         preview.hide()
         hud.hide()
         cachedScreen = nil

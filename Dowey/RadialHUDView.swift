@@ -30,9 +30,12 @@ final class OverlayWindow: NSWindow {
         // Suppresses the window-server fade on order-in/order-out; the overlay
         // must appear and vanish on the exact frame the gesture changes.
         animationBehavior = .none
-        // `.stationary` keeps the overlay from sliding during a Space swipe, and
-        // `.fullScreenAuxiliary` lets it draw over a fullscreen app.
-        collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle, .fullScreenAuxiliary]
+        // `.stationary` keeps the overlay from sliding during a Space swipe,
+        // `.fullScreenAuxiliary` lets it draw over a fullscreen app, and
+        // `.transient` hides it in Mission Control so a gesture interrupted by
+        // the Mission Control/Show-All-Windows swipe doesn't leave the ring
+        // floating on top of the window thumbnails.
+        collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle, .fullScreenAuxiliary, .transient]
     }
 
     // Borderless windows already refuse key status; stated explicitly so the
