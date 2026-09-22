@@ -21,6 +21,11 @@ import ServiceManagement
 /// one of these instead of the store itself so nothing in the drawing code has
 /// to know about UserDefaults, SwiftUI or Combine.
 struct Style: Equatable {
+    var design: RingDesign
+    /// The value of the one slider that is unique to `design` — segment gap,
+    /// dot size, glow radius and so on. One number, because a design that needs
+    /// two dials to look right is a design that has not been decided yet.
+    var detail: CGFloat
     var tint: NSColor
     var ringRadius: CGFloat
     var ringThickness: CGFloat
@@ -31,7 +36,9 @@ struct Style: Equatable {
     var previewUsesTint: Bool
     var triggerDistance: CGFloat
 
-    static let `default` = Style(tint: .controlAccentColor,
+    static let `default` = Style(design: .segments,
+                                 detail: RingDesign.segments.detail.value,
+                                 tint: .controlAccentColor,
                                       ringRadius: 52,
                                       ringThickness: 5,
                                       showRing: true,
@@ -44,6 +51,67 @@ struct Style: Equatable {
     /// Stroke width of a lit segment. Derived rather than stored so the two
     /// widths can never drift apart.
     var activeRingThickness: CGFloat { ringThickness + 2 }
+
+    /// A scaled-down copy for the design gallery's thumbnails. Lengths shrink
+    /// with the radius; angles and opacities do not, because they are not
+    /// lengths.
+    func miniature(radius: CGFloat = 22) -> Style {
+        let factor = radius / ringRadius
+        var mini = self
+        mini.ringRadius = radius
+        mini.ringThickness = max(1.5, ringThickness * factor)
+        mini.triggerDistance = max(5, triggerDistance * factor)
+        switch design {
+        case .dots, .blade, .map, .halo: mini.detail = max(1, detail * factor)
+        case .segments, .wedges:         break
+        }
+        return mini
+    }
+}
+
+// MARK: - Ring design
+
+/// How the ring draws itself. Every design answers the same two questions —
+/// which of the six directions is live, and is the maximize target selected —
+/// and each one carries a single parameter of its own.
+enum RingDesign: String, CaseIterable, Identifiable {
+    case segments, wedges, dots, blade, map, halo
+
+    var id: String { rawValue }
+
+    var name: String {
+        switch self {
+        case .segments: return "Segments"
+        case .wedges:   return "Wedges"
+        case .dots:     return "Dots"
+        case .blade:    return "Blade"
+        case .map:      return "Screen Map"
+        case .halo:     return "Halo"
+        }
+    }
+
+    var summary: String {
+        switch self {
+        case .segments: return "Six arcs around the cursor. The one you are pointing at lights up and thickens."
+        case .wedges:   return "Filled slices instead of strokes — the zones read as areas, not hints."
+        case .dots:     return "A dot per direction. The live one swells and fills. The quietest design."
+        case .blade:    return "Nothing but the center target until you commit, then one bar points the way."
+        case .map:      return "A miniature screen at the cursor with the destination tile lit."
+        case .halo:     return "A hairline circle; the live arc glows."
+        }
+    }
+
+    /// The design's own slider: what to call it, its bounds, and its default.
+    var detail: (label: String, range: ClosedRange<Double>, value: Double) {
+        switch self {
+        case .segments: return ("Segment gap", 0...12, 4)
+        case .wedges:   return ("Fill", 0.15...0.7, 0.42)
+        case .dots:     return ("Dot size", 3...12, 5)
+        case .blade:    return ("Width", 6...20, 11)
+        case .map:      return ("Map corners", 0...16, 7)
+        case .halo:     return ("Glow", 0...18, 14)
+        }
+    }
 }
 
 // MARK: - Tint
@@ -87,6 +155,10 @@ final class Settings: ObservableObject {
     private let defaults: UserDefaults
 
     private enum Key {
+        static let design = "ringDesign"
+        /// Per-design detail values, keyed by `RingDesign.rawValue`, so switching
+        /// designs and switching back remembers how each one was tuned.
+        static let details = "ringDetails"
         static let tint = "tint"
         static let ringRadius = "ringRadius"
         static let ringThickness = "ringThickness"
@@ -109,6 +181,21 @@ final class Settings: ObservableObject {
     }
 
     // MARK: Stored settings
+
+    @Published var design: RingDesign { didSet { commit(design.rawValue, Key.design) } }
+
+    private var details: [String: Double] { didSet { commit(details, Key.details) } }
+
+    /// The selected design's own parameter. Reading falls back to that design's
+    /// default, so a design that has never been touched still looks right.
+    var detail: Double {
+        get { details[design.rawValue] ?? design.detail.value }
+        set {
+            objectWillChange.send()
+            details[design.rawValue] = min(max(newValue, design.detail.range.lowerBound),
+                                           design.detail.range.upperBound)
+        }
+    }
 
     /// Either a `Tint` raw value or an `#RRGGBB` string from the custom well.
     @Published var tint: String { didSet { commit(tint, Key.tint) } }
@@ -137,6 +224,8 @@ final class Settings: ObservableObject {
         self.defaults = defaults
 
         let d = Style.default
+        design = RingDesign(rawValue: defaults.string(forKey: Key.design) ?? "") ?? d.design
+        details = defaults.dictionary(forKey: Key.details) as? [String: Double] ?? [:]
         tint = defaults.string(forKey: Key.tint) ?? Tint.system.rawValue
         ringRadius = Settings.read(defaults, Key.ringRadius, Double(d.ringRadius), Range.ringRadius)
         ringThickness = Settings.read(defaults, Key.ringThickness, Double(d.ringThickness), Range.ringThickness)
@@ -165,7 +254,9 @@ final class Settings: ObservableObject {
     // MARK: Derived
 
     var style: Style {
-        Style(tint: tintColor,
+        Style(design: design,
+              detail: CGFloat(detail),
+              tint: tintColor,
                    ringRadius: CGFloat(ringRadius),
                    ringThickness: CGFloat(ringThickness),
                    showRing: showRing,
@@ -174,6 +265,19 @@ final class Settings: ObservableObject {
                    previewCornerRadius: CGFloat(previewCornerRadius),
                    previewUsesTint: previewUsesTint,
                    triggerDistance: CGFloat(triggerDistance))
+    }
+
+    /// The detail value a design is tuned to, whether or not it is selected.
+    func detail(for design: RingDesign) -> Double {
+        details[design.rawValue] ?? design.detail.value
+    }
+
+    /// The current style as that design would draw it — what the gallery shows.
+    func style(for design: RingDesign) -> Style {
+        var s = style
+        s.design = design
+        s.detail = CGFloat(detail(for: design))
+        return s
     }
 
     /// `nil` when the stored tint is a custom hex rather than one of the swatches.
@@ -189,6 +293,8 @@ final class Settings: ObservableObject {
 
     func resetToDefaults() {
         let d = Style.default
+        design = d.design
+        details = [:]
         tint = Tint.system.rawValue
         ringRadius = Double(d.ringRadius)
         ringThickness = Double(d.ringThickness)
@@ -200,7 +306,7 @@ final class Settings: ObservableObject {
         triggerDistance = Double(d.triggerDistance)
     }
 
-    var isDefault: Bool { style == .default && selectedTint == .system }
+    var isDefault: Bool { style == .default && selectedTint == .system && details.isEmpty }
 
     // MARK: Login item
 

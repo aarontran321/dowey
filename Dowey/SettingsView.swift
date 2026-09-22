@@ -2,33 +2,89 @@
 //  SettingsView.swift
 //  Dowey
 //
-//  The whole app surface: one grouped form, System Settings' own layout.
+//  The whole app surface, in two columns: what it looks like on the left —
+//  the live preview and the design gallery — and the knobs for whatever is
+//  selected on the right.
 //
 //  There is no Save button and no Apply button. Every control is bound straight
-//  to the store, the store persists on write, and the preview at the top is the
-//  real ring — so the change you see is the change the gesture will use.
+//  to the store, the store persists on write, and the preview is the real ring —
+//  so the change you see is the change the gesture will use.
 //
 
 import SwiftUI
 
 struct SettingsView: View {
 
+    enum Metrics {
+        static let sidebarWidth: CGFloat = 380
+    }
+
     @ObservedObject var settings: Settings
     @State private var permissions = PermissionStatus.current()
 
     var body: some View {
-        Form {
-            Section {
-                GesturePreview(style: settings.style)
-                    .frame(height: GesturePreviewView.preferredHeight)
-                    .listRowInsets(EdgeInsets(top: 10, leading: 10, bottom: 10, trailing: 10))
-            } footer: {
-                Text("Move the pointer across the preview to try each direction. Shown at actual size.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+        HStack(spacing: 0) {
+            stage.frame(width: Metrics.sidebarWidth)
+            Divider()
+            form
+        }
+        // The two materials are painted behind the layout rather than inside
+        // it, so they run up under the transparent titlebar while the controls
+        // still respect it. Without this the titlebar strip stays see-through.
+        .background(alignment: .leading) {
+            HStack(spacing: 0) {
+                VisualEffect(material: .sidebar).frame(width: Metrics.sidebarWidth)
+                VisualEffect(material: .contentBackground)
+            }
+            .ignoresSafeArea()
+        }
+        .tint(Color(nsColor: settings.tintColor))
+        // Event-driven, never polled: returning from System Settings reactivates
+        // Dowey, which is exactly when the answer can have changed.
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            permissions = .current()
+        }
+    }
+
+    // MARK: - Left: preview and gallery
+
+    private var stage: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            GesturePreview(style: settings.style)
+                .frame(height: GesturePreviewView.preferredHeight)
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+
+            Text("Actual size — move the pointer here to try it")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+                .padding(.top, 8)
+
+            Text("RING DESIGN")
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(.tertiary)
+                .padding(.top, 26)
+                .padding(.bottom, 10)
+
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 3), spacing: 14) {
+                ForEach(RingDesign.allCases) { design in
+                    DesignCell(style: settings.style(for: design).miniature(),
+                               name: design.name,
+                               isSelected: settings.design == design)
+                        .onTapGesture { settings.design = design }
+                        .help(design.summary)
+                }
             }
 
-            Section("Ring") {
+            Spacer(minLength: 0)
+        }
+        .padding(20)
+    }
+
+    // MARK: - Right: the knobs
+
+    private var form: some View {
+        Form {
+            Section {
                 LabeledContent("Color") { swatches }
 
                 slider("Size", value: $settings.ringRadius,
@@ -37,7 +93,17 @@ struct SettingsView: View {
                 slider("Thickness", value: $settings.ringThickness,
                        range: Settings.Range.ringThickness, low: "Thin", high: "Thick")
 
-                Toggle("Show the ring", isOn: $settings.showRing)
+                slider(settings.design.detail.label,
+                       value: Binding(get: { settings.detail }, set: { settings.detail = $0 }),
+                       range: settings.design.detail.range, low: "Less", high: "More")
+
+                Toggle("Show at the pointer", isOn: $settings.showRing)
+            } header: {
+                Text(settings.design.name)
+            } footer: {
+                Text(settings.design.summary)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
             }
 
             Section("Destination") {
@@ -89,12 +155,6 @@ struct SettingsView: View {
         }
         .formStyle(.grouped)
         .scrollContentBackground(.hidden) // lets the window's material show through
-        .tint(Color(nsColor: settings.tintColor))
-        // Event-driven, never polled: returning from System Settings reactivates
-        // Dowey, which is exactly when the answer can have changed.
-        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
-            permissions = .current()
-        }
     }
 
     // MARK: - Pieces
@@ -187,10 +247,74 @@ private struct Swatch: View {
     }
 }
 
+// MARK: - Design gallery
+
+/// One tile in the gallery. The thumbnail is a real `RadialHUDView` at a
+/// miniature scale, so a design can never advertise itself as something other
+/// than what it draws.
+private struct DesignCell: View {
+    let style: Style
+    let name: String
+    let isSelected: Bool
+
+    var body: some View {
+        VStack(spacing: 6) {
+            RingThumbnail(style: style)
+                .frame(height: 68)
+                .frame(maxWidth: .infinity)
+                .background(Color.primary.opacity(0.06))
+                .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 7, style: .continuous)
+                        .strokeBorder(isSelected ? Color.accentColor : Color.primary.opacity(0.10),
+                                      lineWidth: isSelected ? 2.5 : 1)
+                }
+
+            Text(name)
+                .font(.caption)
+                .foregroundStyle(isSelected ? .primary : .secondary)
+                .lineLimit(1)
+        }
+        .contentShape(Rectangle())
+    }
+}
+
+private struct RingThumbnail: NSViewRepresentable {
+    let style: Style
+
+    func makeNSView(context: Context) -> ThumbnailContainer { ThumbnailContainer(style: style) }
+    func updateNSView(_ view: ThumbnailContainer, context: Context) { view.apply(style) }
+}
+
+/// Centers a `RadialHUDView` whose own size changes with the style.
+final class ThumbnailContainer: NSView {
+    private let hud: RadialHUDView
+
+    init(style: Style) {
+        hud = RadialHUDView(style: style)
+        super.init(frame: .zero)
+        hud.activeZone = .topRight // the gallery always shows a live direction
+        addSubview(hud)
+    }
+
+    required init?(coder: NSCoder) { fatalError("not used") }
+
+    func apply(_ style: Style) {
+        hud.apply(style)
+        needsLayout = true
+    }
+
+    override func layout() {
+        super.layout()
+        hud.setFrameOrigin(CGPoint(x: (bounds.width - hud.frame.width) / 2,
+                                   y: (bounds.height - hud.frame.height) / 2))
+    }
+}
+
 // MARK: - Live preview
 
 /// Hosts the real `GesturePreviewView` — the same AppKit view classes the
-/// gesture draws with — inside the form.
+/// gesture draws with — inside the window.
 private struct GesturePreview: NSViewRepresentable {
 
     let style: Style
@@ -201,5 +325,25 @@ private struct GesturePreview: NSViewRepresentable {
 
     func updateNSView(_ view: GesturePreviewView, context: Context) {
         view.apply(style)
+    }
+}
+
+// MARK: - Material
+
+/// The window is one plain container; each column brings its own material, the
+/// way a sidebar and its content pane do everywhere else on the system.
+struct VisualEffect: NSViewRepresentable {
+    let material: NSVisualEffectView.Material
+
+    func makeNSView(context: Context) -> NSVisualEffectView {
+        let view = NSVisualEffectView()
+        view.material = material
+        view.blendingMode = .behindWindow
+        view.state = .active
+        return view
+    }
+
+    func updateNSView(_ view: NSVisualEffectView, context: Context) {
+        view.material = material
     }
 }

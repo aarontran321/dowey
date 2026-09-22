@@ -5,6 +5,29 @@ All notable changes to Dowey are documented here. Versions follow
 the public shape — the gesture, the six zones, and the names and meanings of
 the settings — is stable: a breaking change to any of them takes a major bump.
 
+## [1.1.0] — 2026-09-22
+
+### Added
+- Six ring designs, picked from a gallery beside the live preview: **Segments**
+  (the original), **Wedges**, **Dots**, **Blade**, **Screen Map** and **Halo**.
+  Each carries one parameter of its own — segment gap, fill, dot size, width,
+  map corners, glow — remembered per design, so switching away and back does
+  not reset how it was tuned.
+- Gallery thumbnails are real `RadialHUDView`s at a miniature scale, so a
+  design cannot advertise itself as something other than what it draws.
+
+### Changed
+- The settings window is two columns and 980 pt wide: preview and design
+  gallery on the left in sidebar material, the selected design's controls on
+  the right. The form no longer reads like a phone screen.
+- "Show the ring" is now "Show at the pointer", because not every design is a
+  ring.
+
+### Fixed
+- The transparent titlebar strip no longer shows through: SwiftUI insets for
+  the titlebar safe area, so the column materials are painted behind the
+  layout and told to ignore it.
+
 ## [1.0.0] — 2026-09-22
 
 First stable release. Dowey is configurable now: the gesture from 0.1.0 is

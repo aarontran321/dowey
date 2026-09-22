@@ -49,31 +49,42 @@ final class OverlayWindow: NSWindow {
 
 // MARK: - View
 
-/// Seven `CAShapeLayer`s — six zone arcs plus the center maximize target —
-/// whose paths are built once per style. Changing the highlighted zone
-/// assigns two colors and two line widths; nothing is re-rasterized from a
-/// `draw(_:)` call.
 final class RadialHUDView: NSView {
 
     private enum Metrics {
-        /// Angular padding trimmed off each end of a segment, in degrees.
-        static let segmentGap: CGFloat = 4
-        /// Room for the widest stroke plus antialiasing bleed.
+        /// Room for the widest stroke, the glow, and antialiasing bleed.
         static let padding: CGFloat = 8
+        /// Screen aspect used by the Screen Map design.
+        static let mapAspect: CGFloat = 0.625
     }
 
-    /// Side length the ring needs at this style — the window and the
-    /// settings preview both size themselves from it.
+    /// How far from the center the design actually paints. Drives the window
+    /// size, so nothing is ever clipped by its own overlay.
+    private static func outerReach(_ style: Style) -> CGFloat {
+        switch style.design {
+        case .segments, .wedges: return style.ringRadius + style.activeRingThickness / 2
+        case .dots:              return style.ringRadius + style.detail * 1.7
+        case .blade:             return style.ringRadius + 6 + style.detail / 2
+        case .halo:              return style.ringRadius + style.activeRingThickness / 2 + style.detail
+        case .map:               return style.ringRadius * 1.2
+        }
+    }
+
     static func preferredSize(for style: Style) -> NSSize {
-        let side = (style.ringRadius + style.activeRingThickness / 2 + Metrics.padding) * 2
+        let side = (outerReach(style) + Metrics.padding) * 2
         return NSSize(width: side, height: side)
     }
 
     private var style: Style
-    private var segmentLayers: [(zone: Zone, layer: CAShapeLayer)] = []
+    /// One layer per direction, in `Zone.allCases` order.
+    private var zoneLayers: [(zone: Zone, layer: CAShapeLayer)] = []
+    /// The maximize target: the center circle, or the whole screen on Screen Map.
     private var centerLayer = CAShapeLayer()
+    /// Decoration that never changes with the selection — Halo's hairline
+    /// circle, Screen Map's outline.
+    private var chromeLayers: [CAShapeLayer] = []
 
-    /// `nil` means the maximize target is selected: no segment lit, center lit.
+    /// `nil` means the maximize target is selected: no direction lit, center lit.
     var activeZone: Zone? {
         didSet {
             guard oldValue != activeZone else { return }
@@ -94,8 +105,8 @@ final class RadialHUDView: NSView {
 
     required init?(coder: NSCoder) { fatalError("not used") }
 
-    /// Resizes to fit and redraws. Cheap enough (seven shape layers, no
-    /// rasterization) to call on every tick of a slider drag.
+    /// Resizes to fit and redraws. Cheap enough — a handful of shape layers, no
+    /// rasterization — to call on every tick of a slider drag.
     func apply(_ style: Style) {
         guard style != self.style else { return }
         self.style = style
@@ -105,44 +116,184 @@ final class RadialHUDView: NSView {
 
     private func rebuild() {
         layer?.sublayers?.forEach { $0.removeFromSuperlayer() }
-        segmentLayers.removeAll()
+        zoneLayers.removeAll()
+        chromeLayers.removeAll()
         centerLayer = CAShapeLayer()
         buildLayers()
         applyHighlight()
         viewDidChangeBackingProperties()
     }
 
-    private func buildLayers() {
-        guard let root = layer else { return }
-        let center = CGPoint(x: bounds.midX, y: bounds.midY)
+    // MARK: - Geometry
 
+    private var center: CGPoint { CGPoint(x: bounds.midX, y: bounds.midY) }
+
+    /// Screen Map's miniature display, in the same y-up space as `Zone.rect`.
+    private var mapScreen: CGRect {
+        let w = style.ringRadius * 2.4
+        let h = w * Metrics.mapAspect
+        return CGRect(x: center.x - w / 2, y: center.y - h / 2, width: w, height: h)
+    }
+
+    private func point(atAngle degrees: CGFloat, radius: CGFloat) -> CGPoint {
+        let a = degrees * .pi / 180
+        return CGPoint(x: center.x + cos(a) * radius, y: center.y + sin(a) * radius)
+    }
+
+    private func midAngle(of zone: Zone) -> CGFloat {
+        let arc = zone.arc
+        return (arc.start + arc.end) / 2
+    }
+
+    private func newLayer(into list: inout [CAShapeLayer]) -> CAShapeLayer {
+        let shape = CAShapeLayer()
+        shape.frame = bounds
+        shape.fillColor = nil
+        layer?.addSublayer(shape)
+        list.append(shape)
+        return shape
+    }
+
+    // MARK: - Build
+
+    private func buildLayers() {
+        guard layer != nil else { return }
+
+        switch style.design {
+        case .segments: buildArcs(gap: style.detail, cap: .round)
+        case .halo:     buildHalo()
+        case .wedges:   buildWedges()
+        case .dots:     buildDots()
+        case .blade:    buildBlades()
+        case .map:      buildMap()
+        }
+
+        buildCenterTarget()
+    }
+
+    /// Shared by Segments and Halo: one stroked arc per zone.
+    private func buildArcs(gap: CGFloat, cap: CAShapeLayerLineCap) {
         for zone in Zone.allCases {
             let arc = zone.arc
             let path = CGMutablePath()
             path.addArc(center: center,
                         radius: style.ringRadius,
-                        startAngle: (arc.start + Metrics.segmentGap) * .pi / 180,
-                        endAngle: (arc.end - Metrics.segmentGap) * .pi / 180,
+                        startAngle: (arc.start + gap) * .pi / 180,
+                        endAngle: (arc.end - gap) * .pi / 180,
                         clockwise: false)
 
             let shape = CAShapeLayer()
             shape.path = path
             shape.fillColor = nil
-            shape.lineCap = .round
+            shape.lineCap = cap
             shape.frame = bounds
-            root.addSublayer(shape)
-            segmentLayers.append((zone, shape))
+            layer?.addSublayer(shape)
+            zoneLayers.append((zone, shape))
         }
-
-        // Radius comes from the same number the state machine tests, so the
-        // circle the user aims at is exactly the threshold.
-        let r = style.triggerDistance
-        centerLayer.path = CGPath(ellipseIn: CGRect(x: center.x - r, y: center.y - r,
-                                                    width: r * 2, height: r * 2),
-                                  transform: nil)
-        centerLayer.frame = bounds
-        root.addSublayer(centerLayer)
     }
+
+    private func buildHalo() {
+        // The hairline circle is the whole idle state — the arcs only appear
+        // once a direction is live.
+        let ring = newLayer(into: &chromeLayers)
+        ring.path = CGPath(ellipseIn: CGRect(x: center.x - style.ringRadius,
+                                             y: center.y - style.ringRadius,
+                                             width: style.ringRadius * 2,
+                                             height: style.ringRadius * 2), transform: nil)
+        ring.lineWidth = max(1, style.ringThickness * 0.32)
+        buildArcs(gap: 3, cap: .round)
+    }
+
+    private func buildWedges() {
+        let inner = style.triggerDistance + 8
+        for zone in Zone.allCases {
+            let arc = zone.arc
+            let path = CGMutablePath()
+            path.addArc(center: center, radius: style.ringRadius,
+                        startAngle: (arc.start + 2) * .pi / 180,
+                        endAngle: (arc.end - 2) * .pi / 180, clockwise: false)
+            path.addArc(center: center, radius: inner,
+                        startAngle: (arc.end - 2) * .pi / 180,
+                        endAngle: (arc.start + 2) * .pi / 180, clockwise: true)
+            path.closeSubpath()
+
+            let shape = CAShapeLayer()
+            shape.path = path
+            shape.frame = bounds
+            layer?.addSublayer(shape)
+            zoneLayers.append((zone, shape))
+        }
+    }
+
+    private func buildDots() {
+        for zone in Zone.allCases {
+            let shape = CAShapeLayer()
+            shape.frame = bounds
+            shape.strokeColor = nil
+            layer?.addSublayer(shape)
+            zoneLayers.append((zone, shape))
+        }
+        // Paths are assigned in applyHighlight, where the live dot grows.
+    }
+
+    private func buildBlades() {
+        for zone in Zone.allCases {
+            let angle = midAngle(of: zone)
+            let path = CGMutablePath()
+            path.move(to: point(atAngle: angle, radius: style.triggerDistance + 12))
+            path.addLine(to: point(atAngle: angle, radius: style.ringRadius + 6))
+
+            let shape = CAShapeLayer()
+            shape.path = path
+            shape.fillColor = nil
+            shape.lineCap = .round
+            shape.lineWidth = style.detail
+            shape.frame = bounds
+            layer?.addSublayer(shape)
+            zoneLayers.append((zone, shape))
+        }
+    }
+
+    private func buildMap() {
+        let screen = mapScreen
+        let outline = newLayer(into: &chromeLayers)
+        outline.path = CGPath(roundedRect: screen, cornerWidth: style.detail,
+                              cornerHeight: style.detail, transform: nil)
+        outline.lineWidth = max(1, style.ringThickness * 0.4)
+
+        let tileRadius = max(0, style.detail * 0.6)
+        for zone in Zone.allCases {
+            let shape = CAShapeLayer()
+            shape.path = CGPath(roundedRect: zone.rect(in: screen).insetBy(dx: 1.5, dy: 1.5),
+                                cornerWidth: tileRadius, cornerHeight: tileRadius, transform: nil)
+            shape.strokeColor = nil
+            shape.frame = bounds
+            layer?.addSublayer(shape)
+            zoneLayers.append((zone, shape))
+        }
+    }
+
+    private func buildCenterTarget() {
+        if style.design == .map {
+            // Releasing inside the trigger distance maximizes, so the map's
+            // maximize target is the whole screen.
+            let screen = mapScreen
+            centerLayer.path = CGPath(roundedRect: screen.insetBy(dx: 1.5, dy: 1.5),
+                                      cornerWidth: max(0, style.detail * 0.6),
+                                      cornerHeight: max(0, style.detail * 0.6), transform: nil)
+            centerLayer.strokeColor = nil
+        } else {
+            // Radius comes from the same number the state machine tests, so the
+            // circle the user aims at is exactly the threshold.
+            let r = style.triggerDistance
+            centerLayer.path = CGPath(ellipseIn: CGRect(x: center.x - r, y: center.y - r,
+                                                        width: r * 2, height: r * 2), transform: nil)
+        }
+        centerLayer.frame = bounds
+        layer?.addSublayer(centerLayer)
+    }
+
+    // MARK: - Highlight
 
     private func applyHighlight() {
         // Implicit animations would fade every color change over ~0.25 s, which
@@ -152,25 +303,76 @@ final class RadialHUDView: NSView {
 
         let dim = resolved(NSColor.white.withAlphaComponent(0.22))
         let accent = resolved(style.tint)
+        let isMaximizeTargeted = (activeZone == nil)
 
-        for (zone, shape) in segmentLayers {
-            let isActive = (zone == activeZone)
-            shape.strokeColor = isActive ? accent : dim
-            shape.lineWidth = isActive ? style.activeRingThickness : style.ringThickness
+        for layer in chromeLayers {
+            layer.fillColor = nil
+            layer.strokeColor = resolved(NSColor.white.withAlphaComponent(style.design == .map ? 0.35 : 0.18))
         }
 
-        let isMaximizeTargeted = (activeZone == nil)
-        centerLayer.strokeColor = isMaximizeTargeted ? accent : dim
-        centerLayer.lineWidth = isMaximizeTargeted ? style.activeRingThickness : style.ringThickness
-        centerLayer.fillColor = isMaximizeTargeted
-            ? resolved(style.tint.withAlphaComponent(0.20))
-            : nil
+        for (zone, shape) in zoneLayers {
+            let on = (zone == activeZone)
+            shape.isHidden = false
+            shape.shadowOpacity = 0
+
+            switch style.design {
+            case .segments:
+                shape.strokeColor = on ? accent : dim
+                shape.lineWidth = on ? style.activeRingThickness : style.ringThickness
+
+            case .halo:
+                // Only the live arc is drawn; the hairline circle carries the rest.
+                shape.isHidden = !on
+                shape.strokeColor = accent
+                shape.lineWidth = style.activeRingThickness
+                shape.shadowColor = accent
+                shape.shadowRadius = style.detail
+                shape.shadowOffset = .zero
+                shape.shadowOpacity = style.detail > 0 ? 0.9 : 0
+                shape.shadowPath = shape.path
+
+            case .wedges:
+                shape.fillColor = on
+                    ? resolved(style.tint.withAlphaComponent(style.detail))
+                    : resolved(NSColor.white.withAlphaComponent(0.09))
+                shape.strokeColor = on ? accent : resolved(NSColor.white.withAlphaComponent(0.16))
+                shape.lineWidth = on ? 1.5 : 1
+
+            case .dots:
+                let r = on ? style.detail * 1.7 : style.detail
+                let p = point(atAngle: midAngle(of: zone), radius: style.ringRadius)
+                shape.path = CGPath(ellipseIn: CGRect(x: p.x - r, y: p.y - r,
+                                                      width: r * 2, height: r * 2), transform: nil)
+                shape.fillColor = on ? accent : dim
+
+            case .blade:
+                shape.isHidden = !on
+                shape.strokeColor = accent
+                shape.lineWidth = style.detail
+
+            case .map:
+                shape.isHidden = !on
+                shape.fillColor = resolved(style.tint.withAlphaComponent(0.55))
+            }
+        }
+
+        if style.design == .map {
+            centerLayer.isHidden = !isMaximizeTargeted
+            centerLayer.fillColor = resolved(style.tint.withAlphaComponent(0.55))
+        } else {
+            centerLayer.isHidden = false
+            centerLayer.strokeColor = isMaximizeTargeted ? accent : dim
+            centerLayer.lineWidth = isMaximizeTargeted ? style.activeRingThickness : style.ringThickness
+            centerLayer.fillColor = isMaximizeTargeted
+                ? resolved(style.tint.withAlphaComponent(0.20))
+                : nil
+        }
 
         CATransaction.commit()
     }
 
     /// Layers hold resolved colors, so dynamic colors such as `controlAccentColor`
-    /// must be flattened against the current style rather than stored raw.
+    /// must be flattened against the current appearance rather than stored raw.
     private func resolved(_ color: NSColor) -> CGColor {
         var result = color.cgColor
         effectiveAppearance.performAsCurrentDrawingAppearance { result = color.cgColor }
@@ -185,7 +387,8 @@ final class RadialHUDView: NSView {
     override func viewDidChangeBackingProperties() {
         super.viewDidChangeBackingProperties()
         let scale = window?.backingScaleFactor ?? 2
-        for (_, shape) in segmentLayers { shape.contentsScale = scale }
+        for (_, shape) in zoneLayers { shape.contentsScale = scale }
+        for shape in chromeLayers { shape.contentsScale = scale }
         centerLayer.contentsScale = scale
     }
 }

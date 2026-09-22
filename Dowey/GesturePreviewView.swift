@@ -38,12 +38,20 @@ final class GesturePreviewView: NSView {
     private var isPointerInside = false
     private var trackingArea: NSTrackingArea?
 
-    /// Height the preview needs so the largest ring still clears the edges.
+    /// Height the preview needs so that no design, at any setting, is clipped
+    /// by the stage. Derived from the ranges themselves, so widening a slider
+    /// cannot quietly start cropping the ring.
     static var preferredHeight: CGFloat {
-        var largest = Style.default
-        largest.ringRadius = CGFloat(Settings.Range.ringRadius.upperBound)
-        largest.ringThickness = CGFloat(Settings.Range.ringThickness.upperBound)
-        return RadialHUDView.preferredSize(for: largest).height + 24
+        var tallest: CGFloat = 0
+        for design in RingDesign.allCases {
+            var extreme = Style.default
+            extreme.design = design
+            extreme.ringRadius = CGFloat(Settings.Range.ringRadius.upperBound)
+            extreme.ringThickness = CGFloat(Settings.Range.ringThickness.upperBound)
+            extreme.detail = CGFloat(design.detail.range.upperBound)
+            tallest = max(tallest, RadialHUDView.preferredSize(for: extreme).height)
+        }
+        return tallest + 12
     }
 
     init(style: Style) {
