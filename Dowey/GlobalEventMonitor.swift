@@ -74,6 +74,12 @@ final class GlobalEventMonitor {
     /// Installed only between key-down and commit/cancel.
     private var gestureMonitors: [EventMonitorPair] = []
 
+    /// Mission Control (and real Space switches) steal the trackpad away from
+    /// Dowey without ever delivering the Globe-key release — a 4-finger swipe
+    /// up while armed would otherwise strand the HUD on screen forever. This
+    /// notification fires for both cases, so treat it like Escape.
+    private var spaceChangeObserver: NSObjectProtocol?
+
     private let hud = RadialHUDController()
     private let preview = PreviewOverlayController()
 
@@ -132,6 +138,14 @@ final class GlobalEventMonitor {
                 self?.cancel()
             }
         ]
+
+        spaceChangeObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.activeSpaceDidChangeNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.cancel()
+        }
     }
 
     // MARK: - Tracking
@@ -203,6 +217,10 @@ final class GlobalEventMonitor {
     private func teardown() {
         for monitor in gestureMonitors { monitor.stop() }
         gestureMonitors.removeAll()
+        if let spaceChangeObserver {
+            NSWorkspace.shared.notificationCenter.removeObserver(spaceChangeObserver)
+        }
+        spaceChangeObserver = nil
         preview.hide()
         hud.hide()
         cachedScreen = nil
