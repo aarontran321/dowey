@@ -13,7 +13,12 @@ enum ZoneMath {
 
     /// Radius, in screen points, inside which a release means "maximize"
     /// instead of a directional snap.
-    static let deadzoneRadius: CGFloat = 20
+    ///
+    /// Settable because the user can change it, but written from exactly one
+    /// place — `Settings.triggerDistance` — so this file keeps no dependency on
+    /// UserDefaults and stays testable on its own.
+    static let defaultDeadzoneRadius: CGFloat = 20
+    static var deadzoneRadius: CGFloat = defaultDeadzoneRadius
 
     /// Squared-distance comparison keeps the hot path (every mouse-moved
     /// event while armed) free of a sqrt.

@@ -16,6 +16,12 @@
 		3B0000000000000000000007 /* ZoneMath.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A0000000000000000000007 /* ZoneMath.swift */; };
 		3B0000000000000000000008 /* ZoneMathTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A0000000000000000000009 /* ZoneMathTests.swift */; };
 		3B0000000000000000000009 /* ZoneMath.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A0000000000000000000007 /* ZoneMath.swift */; };
+		3B000000000000000000010 /* Settings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A000000000000000000010 /* Settings.swift */; };
+		3B000000000000000000011 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A000000000000000000011 /* SettingsView.swift */; };
+		3B000000000000000000012 /* SettingsWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A000000000000000000012 /* SettingsWindowController.swift */; };
+		3B000000000000000000013 /* GesturePreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A000000000000000000013 /* GesturePreviewView.swift */; };
+		3B000000000000000000014 /* DoweyGlyph.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A000000000000000000014 /* DoweyGlyph.swift */; };
+		3B000000000000000000015 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3A000000000000000000015 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -40,6 +46,12 @@
 		3A0000000000000000000009 /* ZoneMathTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZoneMathTests.swift; sourceTree = "<group>"; };
 		3A000000000000000000000A /* Dowey.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Dowey.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		3A000000000000000000000B /* DoweyTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = DoweyTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		3A000000000000000000010 /* Settings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Settings.swift; sourceTree = "<group>"; };
+		3A000000000000000000011 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		3A000000000000000000012 /* SettingsWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsWindowController.swift; sourceTree = "<group>"; };
+		3A000000000000000000013 /* GesturePreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GesturePreviewView.swift; sourceTree = "<group>"; };
+		3A000000000000000000014 /* DoweyGlyph.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DoweyGlyph.swift; sourceTree = "<group>"; };
+		3A000000000000000000015 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -79,6 +91,12 @@
 				3A0000000000000000000005 /* RadialHUDView.swift */,
 				3A0000000000000000000006 /* PreviewOverlayView.swift */,
 				3A0000000000000000000007 /* ZoneMath.swift */,
+				3A000000000000000000010 /* Settings.swift */,
+				3A000000000000000000011 /* SettingsView.swift */,
+				3A000000000000000000012 /* SettingsWindowController.swift */,
+				3A000000000000000000013 /* GesturePreviewView.swift */,
+				3A000000000000000000014 /* DoweyGlyph.swift */,
+				3A000000000000000000015 /* Assets.xcassets */,
 				3A0000000000000000000008 /* Info.plist */,
 			);
 			path = Dowey;
@@ -180,6 +198,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				3B000000000000000000015 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -197,6 +216,11 @@
 				3B0000000000000000000005 /* RadialHUDView.swift in Sources */,
 				3B0000000000000000000006 /* PreviewOverlayView.swift in Sources */,
 				3B0000000000000000000007 /* ZoneMath.swift in Sources */,
+				3B000000000000000000010 /* Settings.swift in Sources */,
+				3B000000000000000000011 /* SettingsView.swift in Sources */,
+				3B000000000000000000012 /* SettingsWindowController.swift in Sources */,
+				3B000000000000000000013 /* GesturePreviewView.swift in Sources */,
+				3B000000000000000000014 /* DoweyGlyph.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -265,7 +289,7 @@
 		4100000000000000000003 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = "";
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
@@ -278,7 +302,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 1.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.aaron.dowey;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -288,7 +312,7 @@
 		4100000000000000000004 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = "";
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
@@ -301,7 +325,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 1.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.aaron.dowey;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -316,7 +340,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 1.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.aaron.dowey.tests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
@@ -331,7 +355,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 1.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.aaron.dowey.tests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;

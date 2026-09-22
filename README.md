@@ -5,7 +5,8 @@ A tiny, native macOS window snapper. Hold the **Globe (🌐 / fn)** key, flick t
 - Six directional zones (halves + quarters), selected by mouse *direction*, not position.
 - Release without moving → maximize to the visible screen area.
 - Escape → cancel, nothing moves.
-- No Dock icon, no preferences, no polling, no third-party dependencies. Idles at 0.0% CPU.
+- One settings window — color, size, and a live preview of the real ring. Nothing to save; every control commits as you touch it.
+- No Dock icon, no polling, no third-party dependencies. Idles at 0.0% CPU.
 
 Requires macOS 13 or later. Not sandboxed — it moves other apps' windows, which the App Sandbox forbids.
 
@@ -39,7 +40,7 @@ Two behaviors worth knowing:
 - **Deadzone re-entry.** Moving back inside the 20 pt radius returns the ring to its neutral state and dismisses the preview, so releasing there maximizes. The circle at the center of the ring *is* that target — it is drawn at exactly the 20 pt deadzone radius, and it lights up whenever releasing would maximize.
 - **Which screen.** On a multi-monitor setup, the target is whichever display the *cursor* is on when you release — not the one the window currently sits on. Rects are computed from `NSScreen.visibleFrame`, so the menu bar and Dock are already excluded.
 
-Minimize is not implemented in v1. Zone angles, the trigger key, and the deadzone radius are hardcoded constants.
+Minimize is not implemented in v1. Zone angles and the trigger key are hardcoded; the deadzone radius is the **Trigger distance** setting.
 
 ---
 
@@ -62,7 +63,7 @@ Both live in **System Settings → Privacy & Security**:
 | **Accessibility** | Reading and moving the frontmost window (`AXUIElement`) | Privacy & Security → Accessibility |
 | **Input Monitoring** | Seeing the Globe key from a background app | Privacy & Security → Input Monitoring |
 
-Dowey checks both at launch and shows one alert if either is missing. It does **not** poll for the grant — after you allow them, either relaunch Dowey or use **Recheck Permissions** in its menu-bar menu.
+Dowey checks both at launch and shows one alert if either is missing. It does **not** poll for the grant — the **General** section of its Settings window shows the current status, re-read each time Dowey becomes active, so returning from System Settings updates it.
 
 > There are no `Info.plist` usage-description strings for these two. Unlike Camera or Microphone, Accessibility and Input Monitoring are approved in System Settings and take no `NSxxxUsageDescription` key. Adding one does nothing.
 
@@ -93,13 +94,48 @@ Then install to `/Applications` and launch from there:
 rm -rf /Applications/Dowey.app && cp -R build/Build/Products/Release/Dowey.app /Applications/ && open /Applications/Dowey.app
 ```
 
-Dowey has no Dock icon (`LSUIElement`). Look for the window icon in the menu bar — that menu shows per-permission status, **Recheck Permissions**, and **Quit**.
+Dowey has no Dock icon (`LSUIElement`). Look for the circle in the menu bar — that menu has **Settings…** and **Quit**. Launching Dowey again while it is already running (from Finder or Spotlight) also opens Settings.
 
 Run the unit tests (pure geometry, no app launch, no permissions needed):
 
 ```bash
 xcodebuild -project Dowey.xcodeproj -scheme Dowey -configuration Debug test
 ```
+
+---
+
+## Settings
+
+Click the circle in the menu bar → **Settings…** (or ⌘, with the window focused; launching Dowey again opens it too).
+
+The window is a single grouped form in the shape System Settings uses, on a vibrant background. **There is no Save button.** Each control writes to `UserDefaults` in its setter, and the next gesture reads it — move a slider and the very next Globe press uses the new value.
+
+The preview at the top is not an illustration. It is a `RadialHUDView` and a `PreviewOverlayView` — the same two classes the gesture draws with — on a miniature desktop, with directions resolved by the same `ZoneMath`. Move the pointer across it and it arms, picks zones and highlights destinations exactly as the real gesture does. The ring is drawn at actual size.
+
+| Setting | Range | What it changes |
+|---|---|---|
+| **Color** | 9 swatches + a custom well | The lit segment, the lit center circle, and (optionally) the destination tint. `Accent Color` follows the system-wide accent. |
+| **Size** | 32–84 pt | Ring radius. |
+| **Thickness** | 2–10 pt | Segment stroke width. The lit segment is always 2 pt thicker. |
+| **Show the ring** | on/off | Turn the HUD off entirely and snap by direction alone. |
+| **Highlight the destination** | on/off | The tinted rectangle at the target. |
+| **Opacity** | 0.1–1.0 | How solid that rectangle is. |
+| **Corners** | 0–28 pt | Its corner radius. |
+| **Use the ring color** | on/off | Tint the destination with your color instead of neutral gray. |
+| **Trigger distance** | 8–48 pt | The deadzone: how far the pointer must travel before a direction is chosen, and the size of the center maximize target. |
+| **Open at Login** | on/off | `SMAppService.mainApp`. |
+
+**Restore Defaults** at the bottom puts every one of them back, and greys itself out when nothing has been changed.
+
+## The icon
+
+Both the app icon and the menu bar button are the same circle — the center target the gesture puts under your cursor. `Dowey/DoweyGlyph.swift` is the only place it is drawn: the menu bar gets a template image at runtime, and the asset catalog is generated from the same code.
+
+```bash
+swiftc -O Dowey/DoweyGlyph.swift Tools/GenerateAppIcon.swift -o /tmp/dowey-icon && /tmp/dowey-icon
+```
+
+That rewrites `Dowey/Assets.xcassets/AppIcon.appiconset` in place. Edit the drawing, re-run it, rebuild.
 
 ---
 
@@ -168,11 +204,16 @@ between gestures.
 | File | Responsibility |
 |---|---|
 | `main.swift` | Entry point; `.accessory` activation policy (no Dock icon). |
-| `AppDelegate.swift` | Launch-time permission check, status item and menu. |
+| `AppDelegate.swift` | Launch-time permission check, status item and menu, reopen handling. |
+| `Settings.swift` | The store: every customizable value, its UserDefaults persistence, the `Style` snapshot the overlays read, and the login item. |
+| `SettingsView.swift` | The settings form (SwiftUI). |
+| `SettingsWindowController.swift` | Its window: transparent titlebar, vibrant background, ⌘W / ⌘Q. |
+| `GesturePreviewView.swift` | The live preview — real ring, real destination tile, real zone math, on a miniature desktop. |
+| `DoweyGlyph.swift` | The circle: menu bar template image and app icon artwork. |
 | `GlobalEventMonitor.swift` | The state machine — Idle → Armed → Tracking → Commit/Cancel — and every event monitor's lifecycle. |
 | `WindowEngine.swift` | Accessibility-API window manipulation; target-screen selection; Cocoa ↔ AX coordinate conversion. |
-| `RadialHUDView.swift` | The ring: arc segments, highlight, center maximize circle, draw code. Also `OverlayWindow`, the shared borderless/click-through window used by both overlays. |
-| `PreviewOverlayView.swift` | Destination outline and flat gray tint. |
+| `RadialHUDView.swift` | The ring: arc segments, highlight, center maximize circle, all driven by a `Style`. Also `OverlayWindow`, the shared borderless/click-through window used by both overlays. |
+| `PreviewOverlayView.swift` | Destination outline and flat tint. |
 | `ZoneMath.swift` | Pure geometry: angle from points, angle → zone, zone → rect, deadzone test. No AppKit state, fully unit-tested. |
 
 One coordinate-system rule runs through all of it: everything is in Cocoa screen space (bottom-left origin, y-up) until the very last step, where `WindowEngine.cocoaToAccessibility` flips the rect for the Accessibility API, which is top-left origin and anchored on the primary display.

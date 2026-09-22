@@ -5,6 +5,9 @@
 //  The radial ring shown around the gesture origin. Six stroked arc segments,
 //  hollow center (the center *is* the maximize/deadzone target).
 //
+//  Every metric and color comes from an `Style` snapshot, so the same view
+//  class draws the real HUD and the live preview inside the settings window.
+//
 
 import AppKit
 import CoreGraphics
@@ -47,24 +50,26 @@ final class OverlayWindow: NSWindow {
 // MARK: - View
 
 /// Seven `CAShapeLayer`s — six zone arcs plus the center maximize target —
-/// whose paths are built once. Changing the highlighted zone assigns two colors
-/// and two line widths; nothing is re-rasterized from a `draw(_:)` call.
+/// whose paths are built once per style. Changing the highlighted zone
+/// assigns two colors and two line widths; nothing is re-rasterized from a
+/// `draw(_:)` call.
 final class RadialHUDView: NSView {
 
     private enum Metrics {
-        static let ringRadius: CGFloat = 52
-        static let strokeWidth: CGFloat = 5
-        static let activeStrokeWidth: CGFloat = 7
         /// Angular padding trimmed off each end of a segment, in degrees.
         static let segmentGap: CGFloat = 4
         /// Room for the widest stroke plus antialiasing bleed.
         static let padding: CGFloat = 8
-
-        static var side: CGFloat { (ringRadius + activeStrokeWidth / 2 + padding) * 2 }
     }
 
-    static var preferredSize: NSSize { NSSize(width: Metrics.side, height: Metrics.side) }
+    /// Side length the ring needs at this style — the window and the
+    /// settings preview both size themselves from it.
+    static func preferredSize(for style: Style) -> NSSize {
+        let side = (style.ringRadius + style.activeRingThickness / 2 + Metrics.padding) * 2
+        return NSSize(width: side, height: side)
+    }
 
+    private var style: Style
     private var segmentLayers: [(zone: Zone, layer: CAShapeLayer)] = []
     private var centerLayer = CAShapeLayer()
 
@@ -79,15 +84,33 @@ final class RadialHUDView: NSView {
     override var isFlipped: Bool { false } // y-up, matching ZoneMath's angles
     override var isOpaque: Bool { false }
 
-    override init(frame frameRect: NSRect) {
-        super.init(frame: frameRect)
+    init(style: Style) {
+        self.style = style
+        super.init(frame: NSRect(origin: .zero, size: RadialHUDView.preferredSize(for: style)))
         wantsLayer = true
         layerContentsRedrawPolicy = .never
-        buildLayers()
-        applyHighlight()
+        rebuild()
     }
 
     required init?(coder: NSCoder) { fatalError("not used") }
+
+    /// Resizes to fit and redraws. Cheap enough (seven shape layers, no
+    /// rasterization) to call on every tick of a slider drag.
+    func apply(_ style: Style) {
+        guard style != self.style else { return }
+        self.style = style
+        setFrameSize(RadialHUDView.preferredSize(for: style))
+        rebuild()
+    }
+
+    private func rebuild() {
+        layer?.sublayers?.forEach { $0.removeFromSuperlayer() }
+        segmentLayers.removeAll()
+        centerLayer = CAShapeLayer()
+        buildLayers()
+        applyHighlight()
+        viewDidChangeBackingProperties()
+    }
 
     private func buildLayers() {
         guard let root = layer else { return }
@@ -97,7 +120,7 @@ final class RadialHUDView: NSView {
             let arc = zone.arc
             let path = CGMutablePath()
             path.addArc(center: center,
-                        radius: Metrics.ringRadius,
+                        radius: style.ringRadius,
                         startAngle: (arc.start + Metrics.segmentGap) * .pi / 180,
                         endAngle: (arc.end - Metrics.segmentGap) * .pi / 180,
                         clockwise: false)
@@ -111,9 +134,9 @@ final class RadialHUDView: NSView {
             segmentLayers.append((zone, shape))
         }
 
-        // Radius comes from ZoneMath so the circle the user aims at is exactly
-        // the threshold the state machine tests.
-        let r = ZoneMath.deadzoneRadius
+        // Radius comes from the same number the state machine tests, so the
+        // circle the user aims at is exactly the threshold.
+        let r = style.triggerDistance
         centerLayer.path = CGPath(ellipseIn: CGRect(x: center.x - r, y: center.y - r,
                                                     width: r * 2, height: r * 2),
                                   transform: nil)
@@ -128,26 +151,26 @@ final class RadialHUDView: NSView {
         CATransaction.setDisableActions(true)
 
         let dim = resolved(NSColor.white.withAlphaComponent(0.22))
-        let accent = resolved(NSColor.controlAccentColor)
+        let accent = resolved(style.tint)
 
         for (zone, shape) in segmentLayers {
             let isActive = (zone == activeZone)
             shape.strokeColor = isActive ? accent : dim
-            shape.lineWidth = isActive ? Metrics.activeStrokeWidth : Metrics.strokeWidth
+            shape.lineWidth = isActive ? style.activeRingThickness : style.ringThickness
         }
 
         let isMaximizeTargeted = (activeZone == nil)
         centerLayer.strokeColor = isMaximizeTargeted ? accent : dim
-        centerLayer.lineWidth = isMaximizeTargeted ? Metrics.activeStrokeWidth : Metrics.strokeWidth
+        centerLayer.lineWidth = isMaximizeTargeted ? style.activeRingThickness : style.ringThickness
         centerLayer.fillColor = isMaximizeTargeted
-            ? resolved(NSColor.controlAccentColor.withAlphaComponent(0.20))
+            ? resolved(style.tint.withAlphaComponent(0.20))
             : nil
 
         CATransaction.commit()
     }
 
     /// Layers hold resolved colors, so dynamic colors such as `controlAccentColor`
-    /// must be flattened against the current appearance rather than stored raw.
+    /// must be flattened against the current style rather than stored raw.
     private func resolved(_ color: NSColor) -> CGColor {
         var result = color.cgColor
         effectiveAppearance.performAsCurrentDrawingAppearance { result = color.cgColor }
@@ -176,10 +199,10 @@ final class RadialHUDController {
 
     /// Built on first use so an app that has been idle since launch owns no
     /// window-server resources at all.
-    private func makeWindowIfNeeded() -> (OverlayWindow, RadialHUDView) {
+    private func makeWindowIfNeeded(_ style: Style) -> (OverlayWindow, RadialHUDView) {
         if let window, let view { return (window, view) }
 
-        let view = RadialHUDView(frame: NSRect(origin: .zero, size: RadialHUDView.preferredSize))
+        let view = RadialHUDView(style: style)
         let window = OverlayWindow(level: NSWindow.Level(rawValue: NSWindow.Level.statusBar.rawValue + 1),
                                    contentView: view)
         self.window = window
@@ -189,11 +212,18 @@ final class RadialHUDController {
 
     /// Anchors the ring on the gesture origin — not on the live cursor — because
     /// the hollow center represents the deadzone, which is measured from origin.
+    ///
+    /// The style is read here, once per gesture: a settings change mid-hold
+    /// cannot resize the ring out from under the user.
     func show(at origin: CGPoint) {
-        let (window, view) = makeWindowIfNeeded()
+        let style = Settings.shared.style
+        guard style.showRing else { return }
+
+        let (window, view) = makeWindowIfNeeded(style)
+        view.apply(style)
         view.activeZone = nil
 
-        let size = RadialHUDView.preferredSize
+        let size = RadialHUDView.preferredSize(for: style)
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         window.setFrame(NSRect(x: origin.x - size.width / 2,
