@@ -2,10 +2,11 @@
 
 All notable changes to Dowey are documented here. Versions follow
 [Semantic Versioning](https://semver.org): `MAJOR.MINOR.PATCH`. From 1.0.0 on,
-the public shape — the gesture, the eight zones, and the names and meanings of
-the settings — is stable: a breaking change to any of them takes a major bump.
+the public shape — the gesture, the zone layouts, and the names and meanings
+of the settings — is stable: a breaking change to any of them takes a major
+bump.
 
-## [1.2.1] — 2026-09-23
+## [1.3.0] — 2026-09-23
 
 ### Added
 - **Six zones only.** A switch in Settings drops Top and Bottom and restores
