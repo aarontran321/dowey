@@ -34,7 +34,7 @@ final class SettingsWindowController: NSWindowController {
     static let shared = SettingsWindowController()
 
     private init() {
-        let window = SettingsWindow(contentRect: NSRect(x: 0, y: 0, width: 980, height: 700),
+        let window = SettingsWindow(contentRect: NSRect(x: 0, y: 0, width: 1060, height: 720),
                                     styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
                                     backing: .buffered,
                                     defer: false)
@@ -44,8 +44,10 @@ final class SettingsWindowController: NSWindowController {
         // The live preview tracks the pointer, and mouse-moved events are only
         // delivered to a window that asks for them.
         window.acceptsMouseMovedEvents = true
-        window.contentMinSize = NSSize(width: 980, height: 600)
-        window.contentMaxSize = NSSize(width: 1280, height: CGFloat.greatestFiniteMagnitude)
+        // The columns split the window evenly, so the minimum is set by the
+        // narrower of the two halves rather than by either one on its own.
+        window.contentMinSize = NSSize(width: SettingsView.Metrics.minWindowWidth, height: 620)
+        window.contentMaxSize = NSSize(width: 1600, height: CGFloat.greatestFiniteMagnitude)
 
         // The material is the window's background, so the window itself must not
         // paint one underneath it.

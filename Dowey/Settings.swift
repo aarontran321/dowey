@@ -35,6 +35,9 @@ struct Style: Equatable {
     var previewCornerRadius: CGFloat
     var previewUsesTint: Bool
     var triggerDistance: CGFloat
+    /// Carried in the snapshot so a layout change invalidates the drawn ring
+    /// the same way any other style change does.
+    var zoneLayout: ZoneLayout
 
     static let `default` = Style(design: .segments,
                                  detail: RingDesign.segments.detail.value,
@@ -46,7 +49,8 @@ struct Style: Equatable {
                                       previewOpacity: 0.82,
                                       previewCornerRadius: 10,
                                       previewUsesTint: false,
-                                      triggerDistance: ZoneMath.defaultDeadzoneRadius)
+                                      triggerDistance: ZoneMath.defaultDeadzoneRadius,
+                                      zoneLayout: .eight)
 
     /// Stroke width of a lit segment. Derived rather than stored so the two
     /// widths can never drift apart.
@@ -72,7 +76,7 @@ struct Style: Equatable {
 // MARK: - Ring design
 
 /// How the ring draws itself. Every design answers the same two questions —
-/// which of the eight directions is live, and is the maximize target selected —
+/// which direction is live, and is the maximize target selected —
 /// and each one carries a single parameter of its own.
 enum RingDesign: String, CaseIterable, Identifiable {
     case segments, wedges, dots, blade, map, halo
@@ -92,7 +96,7 @@ enum RingDesign: String, CaseIterable, Identifiable {
 
     var summary: String {
         switch self {
-        case .segments: return "Eight arcs around the cursor. The one you are pointing at lights up and thickens."
+        case .segments: return "One arc per direction. The one you are pointing at lights up and thickens."
         case .wedges:   return "Filled slices instead of strokes — the zones read as areas, not hints."
         case .dots:     return "A dot per direction. The live one swells and fills. The quietest design."
         case .blade:    return "Nothing but the center target until you commit, then one bar points the way."
@@ -168,6 +172,7 @@ final class Settings: ObservableObject {
         static let previewCornerRadius = "previewCornerRadius"
         static let previewUsesTint = "previewUsesTint"
         static let triggerDistance = "triggerDistance"
+        static let sixZones = "sixZones"
     }
 
     /// Slider bounds, kept next to the store so the settings window and any
@@ -208,6 +213,16 @@ final class Settings: ObservableObject {
     @Published var previewCornerRadius: Double { didSet { commit(previewCornerRadius, Key.previewCornerRadius) } }
     @Published var previewUsesTint: Bool { didSet { commit(previewUsesTint, Key.previewUsesTint) } }
 
+    /// Drop Top and Bottom and go back to the original six-zone ring. Pushed
+    /// into ZoneMath for the same reason as `triggerDistance`: the geometry
+    /// layer stays free of UserDefaults.
+    @Published var sixZones: Bool {
+        didSet {
+            ZoneMath.layout = sixZones ? .six : .eight
+            commit(sixZones, Key.sixZones)
+        }
+    }
+
     @Published var triggerDistance: Double {
         didSet {
             // The gesture state machine reads the threshold straight from
@@ -235,8 +250,10 @@ final class Settings: ObservableObject {
         showRing = defaults.object(forKey: Key.showRing) as? Bool ?? d.showRing
         showPreview = defaults.object(forKey: Key.showPreview) as? Bool ?? d.showPreview
         previewUsesTint = defaults.object(forKey: Key.previewUsesTint) as? Bool ?? d.previewUsesTint
+        sixZones = defaults.object(forKey: Key.sixZones) as? Bool ?? (d.zoneLayout == .six)
 
         ZoneMath.deadzoneRadius = CGFloat(triggerDistance)
+        ZoneMath.layout = sixZones ? .six : .eight
     }
 
     /// Missing keys fall back to the default; out-of-range ones are clamped, so
@@ -264,7 +281,8 @@ final class Settings: ObservableObject {
                    previewOpacity: CGFloat(previewOpacity),
                    previewCornerRadius: CGFloat(previewCornerRadius),
                    previewUsesTint: previewUsesTint,
-                   triggerDistance: CGFloat(triggerDistance))
+                   triggerDistance: CGFloat(triggerDistance),
+                   zoneLayout: sixZones ? .six : .eight)
     }
 
     /// The detail value a design is tuned to, whether or not it is selected.
@@ -304,6 +322,7 @@ final class Settings: ObservableObject {
         previewCornerRadius = Double(d.previewCornerRadius)
         previewUsesTint = d.previewUsesTint
         triggerDistance = Double(d.triggerDistance)
+        sixZones = (d.zoneLayout == .six)
     }
 
     var isDefault: Bool { style == .default && selectedTint == .system && details.isEmpty }

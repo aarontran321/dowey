@@ -11,6 +11,18 @@ import CoreGraphics
 
 final class ZoneMathTests: XCTestCase {
 
+    // `ZoneMath.layout` is process-wide, so every test states the layout it
+    // means rather than inheriting whatever ran before it.
+    override func setUp() {
+        super.setUp()
+        ZoneMath.layout = .eight
+    }
+
+    override func tearDown() {
+        ZoneMath.layout = .eight
+        super.tearDown()
+    }
+
     // MARK: - Boundary angles (§2)
 
     /// Every boundary is half-open `[start, end)`: the boundary value belongs to
@@ -67,8 +79,8 @@ final class ZoneMathTests: XCTestCase {
     /// No zone may be so narrow that a flick cannot land in it. ±20° is the
     /// floor the arc table was designed around.
     func testNoZoneIsNarrowerThanFortyDegrees() {
-        for zone in Zone.allCases {
-            let width = zone.arc.end - zone.arc.start
+        for (zone, arc) in Zone.arcs(in: .eight) {
+            let width = arc.end - arc.start
             XCTAssertGreaterThanOrEqual(width, 40, "\(zone.displayName) is only \(width)° wide")
         }
     }
@@ -177,26 +189,80 @@ final class ZoneMathTests: XCTestCase {
 
     // MARK: - Arc table (§4 draws straight off this)
 
-    func testArcsAreContiguousAndCoverTheCircle() {
-        let ordered: [Zone] = [.right, .topRight, .top, .topLeft, .left, .bottomLeft, .bottom, .bottomRight]
-        var total: CGFloat = 0
-        for zone in ordered {
-            let arc = zone.arc
-            XCTAssertGreaterThan(arc.end, arc.start, "\(zone.displayName) arc must be forward-ordered")
-            total += arc.end - arc.start
+    /// Both layouts must tile the circle exactly: no gap a flick could fall
+    /// into, no overlap where two zones would claim the same angle.
+    func testEveryLayoutTilesTheCircleWithoutGapOrOverlap() {
+        for layout in ZoneLayout.allCases {
+            let table = Zone.arcs(in: layout)
+            var total: CGFloat = 0
+            for (zone, arc) in table {
+                XCTAssertGreaterThan(arc.end, arc.start,
+                                     "\(zone.displayName) arc must be forward-ordered in \(layout)")
+                total += arc.end - arc.start
+            }
+            XCTAssertEqual(total, 360, accuracy: 0.0001, "\(layout) does not cover the circle")
+
+            // Each arc must start where the previous one ended, modulo the wrap.
+            for index in 1..<table.count {
+                XCTAssertEqual(table[index].arc.end.truncatingRemainder(dividingBy: 360),
+                               ZoneMath.normalizedDegrees(table[(index + 1) % table.count].arc.start),
+                               accuracy: 0.0001,
+                               "\(layout) has a seam after \(table[index].zone.displayName)")
+            }
         }
-        XCTAssertEqual(total, 360, accuracy: 0.0001)
     }
 
     func testEveryDegreeMapsToAZoneWhoseArcContainsIt() {
+        let table = Dictionary(uniqueKeysWithValues: Zone.activeArcs.map { ($0.zone, $0.arc) })
         for degree in stride(from: CGFloat(0), to: 360, by: 0.5) {
             let zone = Zone.forAngle(degrees: degree)
-            let arc = zone.arc
-            // `right` is stored as 335...385, so compare against both the raw
-            // angle and its +360 alias.
+            guard let arc = table[zone] else {
+                return XCTFail("\(degree)° mapped to \(zone.displayName), which is not in the layout")
+            }
+            // `right` wraps, so compare against both the raw angle and its
+            // +360 alias.
             let inRange = (degree >= arc.start && degree < arc.end)
                 || (degree + 360 >= arc.start && degree + 360 < arc.end)
             XCTAssertTrue(inRange, "\(degree)° mapped to \(zone.displayName), whose arc is \(arc)")
+        }
+    }
+
+    // MARK: - Six-zone layout
+
+    /// The original table, kept reachable by the "Six zones only" setting.
+    func testSixZoneLayoutRestoresTheOriginalBoundaries() {
+        ZoneMath.layout = .six
+
+        XCTAssertEqual(Zone.active.count, 6)
+        XCTAssertFalse(Zone.active.contains(.top))
+        XCTAssertFalse(Zone.active.contains(.bottom))
+
+        XCTAssertEqual(Zone.forAngle(degrees: 0), .right)
+        XCTAssertEqual(Zone.forAngle(degrees: 45), .topRight)
+        XCTAssertEqual(Zone.forAngle(degrees: 90), .topLeft, "90° is a boundary, not Top")
+        XCTAssertEqual(Zone.forAngle(degrees: 135), .left)
+        XCTAssertEqual(Zone.forAngle(degrees: 270), .bottomRight)
+        XCTAssertEqual(Zone.forAngle(degrees: 315), .right)
+        XCTAssertEqual(Zone.forAngle(degrees: -45), .right)
+    }
+
+    /// A straight-up flick has nowhere vertical to go in the six-zone layout,
+    /// so it must resolve to a quarter rather than to nothing.
+    func testStraightUpAndDownStillResolveInSixZoneLayout() {
+        ZoneMath.layout = .six
+        let origin = CGPoint(x: 500, y: 500)
+        XCTAssertEqual(Zone.forDirection(origin: origin, point: CGPoint(x: 500, y: 600)), .topLeft)
+        XCTAssertEqual(Zone.forDirection(origin: origin, point: CGPoint(x: 500, y: 400)), .bottomRight)
+    }
+
+    func testEveryDegreeMapsToAZoneInBothLayouts() {
+        for layout in ZoneLayout.allCases {
+            ZoneMath.layout = layout
+            let expected = Set(Zone.arcs(in: layout).map(\.zone))
+            for degree in stride(from: CGFloat(0), to: 360, by: 0.5) {
+                XCTAssertTrue(expected.contains(Zone.forAngle(degrees: degree)),
+                              "\(degree)° escaped the \(layout) layout")
+            }
         }
     }
 }

@@ -2,7 +2,7 @@
 //  RadialHUDView.swift
 //  Dowey
 //
-//  The radial ring shown around the gesture origin. Eight stroked arc segments,
+//  The radial ring shown around the gesture origin. One stroked arc per zone,
 //  hollow center (the center *is* the maximize/deadzone target).
 //
 //  Every metric and color comes from an `Style` snapshot, so the same view
@@ -66,7 +66,7 @@ final class RadialHUDView: NSView {
     /// less — and turns into a chord at `ringRadius`. The lit dot is 1.7x, and
     /// 0.9 leaves a hair of air between two lit neighbors at the worst setting.
     private static func dotRadius(for style: Style) -> CGFloat {
-        let tightest = Zone.allCases.map { $0.arc.end - $0.arc.start }.min() ?? 45
+        let tightest = Zone.activeArcs.map { $0.arc.end - $0.arc.start }.min() ?? 45
         let chord = 2 * style.ringRadius * sin(tightest * .pi / 360)
         return min(style.detail, chord * 0.9 / 2 / 1.7)
     }
@@ -89,8 +89,9 @@ final class RadialHUDView: NSView {
     }
 
     private var style: Style
-    /// One layer per direction, in `Zone.allCases` order.
-    private var zoneLayers: [(zone: Zone, layer: CAShapeLayer)] = []
+    /// One layer per direction of the live layout, carrying the arc it was
+    /// built from so the highlight pass never has to look it up again.
+    private var zoneLayers: [(zone: Zone, arc: Zone.Arc, layer: CAShapeLayer)] = []
     /// The maximize target: the center circle, or the whole screen on Screen Map.
     private var centerLayer = CAShapeLayer()
     /// Decoration that never changes with the selection — Halo's hairline
@@ -153,11 +154,6 @@ final class RadialHUDView: NSView {
         return CGPoint(x: center.x + cos(a) * radius, y: center.y + sin(a) * radius)
     }
 
-    private func midAngle(of zone: Zone) -> CGFloat {
-        let arc = zone.arc
-        return (arc.start + arc.end) / 2
-    }
-
     private func newLayer(into list: inout [CAShapeLayer]) -> CAShapeLayer {
         let shape = CAShapeLayer()
         shape.frame = bounds
@@ -192,8 +188,7 @@ final class RadialHUDView: NSView {
     /// quarter of each arc keeps the widest setting proportional across zones,
     /// and keeps the swept angle positive no matter what the arc table says.
     private func buildArcs(gap requestedGap: CGFloat, cap: CAShapeLayerLineCap) {
-        for zone in Zone.allCases {
-            let arc = zone.arc
+        for (zone, arc) in Zone.activeArcs {
             let gap = min(requestedGap, (arc.end - arc.start) / 4)
             let path = CGMutablePath()
             path.addArc(center: center,
@@ -208,7 +203,7 @@ final class RadialHUDView: NSView {
             shape.lineCap = cap
             shape.frame = bounds
             layer?.addSublayer(shape)
-            zoneLayers.append((zone, shape))
+            zoneLayers.append((zone, arc, shape))
         }
     }
 
@@ -226,8 +221,7 @@ final class RadialHUDView: NSView {
 
     private func buildWedges() {
         let inner = style.triggerDistance + 8
-        for zone in Zone.allCases {
-            let arc = zone.arc
+        for (zone, arc) in Zone.activeArcs {
             let path = CGMutablePath()
             path.addArc(center: center, radius: style.ringRadius,
                         startAngle: (arc.start + 2) * .pi / 180,
@@ -241,24 +235,24 @@ final class RadialHUDView: NSView {
             shape.path = path
             shape.frame = bounds
             layer?.addSublayer(shape)
-            zoneLayers.append((zone, shape))
+            zoneLayers.append((zone, arc, shape))
         }
     }
 
     private func buildDots() {
-        for zone in Zone.allCases {
+        for (zone, arc) in Zone.activeArcs {
             let shape = CAShapeLayer()
             shape.frame = bounds
             shape.strokeColor = nil
             layer?.addSublayer(shape)
-            zoneLayers.append((zone, shape))
+            zoneLayers.append((zone, arc, shape))
         }
         // Paths are assigned in applyHighlight, where the live dot grows.
     }
 
     private func buildBlades() {
-        for zone in Zone.allCases {
-            let angle = midAngle(of: zone)
+        for (zone, arc) in Zone.activeArcs {
+            let angle = (arc.start + arc.end) / 2
             let path = CGMutablePath()
             path.move(to: point(atAngle: angle, radius: style.triggerDistance + 12))
             path.addLine(to: point(atAngle: angle, radius: style.ringRadius + 6))
@@ -270,7 +264,7 @@ final class RadialHUDView: NSView {
             shape.lineWidth = style.detail
             shape.frame = bounds
             layer?.addSublayer(shape)
-            zoneLayers.append((zone, shape))
+            zoneLayers.append((zone, arc, shape))
         }
     }
 
@@ -284,14 +278,14 @@ final class RadialHUDView: NSView {
         let tileRadius = max(0, style.detail * 0.6)
         // The half tiles overlap the quarters they contain. Harmless: exactly
         // one tile is ever unhidden, so nothing is ever composited over.
-        for zone in Zone.allCases {
+        for (zone, arc) in Zone.activeArcs {
             let shape = CAShapeLayer()
             shape.path = CGPath(roundedRect: zone.rect(in: screen).insetBy(dx: 1.5, dy: 1.5),
                                 cornerWidth: tileRadius, cornerHeight: tileRadius, transform: nil)
             shape.strokeColor = nil
             shape.frame = bounds
             layer?.addSublayer(shape)
-            zoneLayers.append((zone, shape))
+            zoneLayers.append((zone, arc, shape))
         }
     }
 
@@ -332,7 +326,7 @@ final class RadialHUDView: NSView {
             layer.strokeColor = resolved(NSColor.white.withAlphaComponent(style.design == .map ? 0.35 : 0.18))
         }
 
-        for (zone, shape) in zoneLayers {
+        for (zone, arc, shape) in zoneLayers {
             let on = (zone == activeZone)
             shape.isHidden = false
             shape.shadowOpacity = 0
@@ -363,7 +357,7 @@ final class RadialHUDView: NSView {
             case .dots:
                 let base = RadialHUDView.dotRadius(for: style)
                 let r = on ? base * 1.7 : base
-                let p = point(atAngle: midAngle(of: zone), radius: style.ringRadius)
+                let p = point(atAngle: (arc.start + arc.end) / 2, radius: style.ringRadius)
                 shape.path = CGPath(ellipseIn: CGRect(x: p.x - r, y: p.y - r,
                                                       width: r * 2, height: r * 2), transform: nil)
                 shape.fillColor = on ? accent : dim
@@ -410,7 +404,7 @@ final class RadialHUDView: NSView {
     override func viewDidChangeBackingProperties() {
         super.viewDidChangeBackingProperties()
         let scale = window?.backingScaleFactor ?? 2
-        for (_, shape) in zoneLayers { shape.contentsScale = scale }
+        for (_, _, shape) in zoneLayers { shape.contentsScale = scale }
         for shape in chromeLayers { shape.contentsScale = scale }
         centerLayer.contentsScale = scale
     }

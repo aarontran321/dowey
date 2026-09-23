@@ -2,9 +2,12 @@
 //  SettingsView.swift
 //  Dowey
 //
-//  The whole app surface, in two columns: what it looks like on the left —
-//  the live preview and the design gallery — and the knobs for whatever is
-//  selected on the right.
+//  The whole app surface, in two even columns: what it looks like on the left
+//  — the live preview, the design gallery and the zone layout — and the knobs
+//  for whatever is selected on the right.
+//
+//  Neither column is privileged: both take half the window, so widening it
+//  feeds the preview and the controls equally.
 //
 //  There is no Save button and no Apply button. Every control is bound straight
 //  to the store, the store persists on write, and the preview is the real ring —
@@ -16,7 +19,9 @@ import SwiftUI
 struct SettingsView: View {
 
     enum Metrics {
-        static let sidebarWidth: CGFloat = 380
+        /// Half of this is the narrowest a column may get: below it the
+        /// gallery's three tiles stop being legible.
+        static let minWindowWidth: CGFloat = 1000
     }
 
     @ObservedObject var settings: Settings
@@ -24,17 +29,17 @@ struct SettingsView: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            stage.frame(width: Metrics.sidebarWidth)
+            stage.frame(maxWidth: .infinity)
             Divider()
-            form
+            form.frame(maxWidth: .infinity)
         }
         // The two materials are painted behind the layout rather than inside
         // it, so they run up under the transparent titlebar while the controls
         // still respect it. Without this the titlebar strip stays see-through.
         .background(alignment: .leading) {
             HStack(spacing: 0) {
-                VisualEffect(material: .sidebar).frame(width: Metrics.sidebarWidth)
-                VisualEffect(material: .contentBackground)
+                VisualEffect(material: .contentBackground).frame(maxWidth: .infinity)
+                VisualEffect(material: .sidebar).frame(maxWidth: .infinity)
             }
             .ignoresSafeArea()
         }
@@ -62,12 +67,12 @@ struct SettingsView: View {
             Text("RING DESIGN")
                 .font(.system(size: 10, weight: .semibold))
                 .foregroundStyle(.tertiary)
-                .padding(.top, 26)
-                .padding(.bottom, 10)
+                .padding(.top, 28)
+                .padding(.bottom, 12)
 
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 3), spacing: 14) {
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 14), count: 3), spacing: 18) {
                 ForEach(RingDesign.allCases) { design in
-                    DesignCell(style: settings.style(for: design).miniature(),
+                    DesignCell(style: settings.style(for: design).miniature(radius: 30),
                                name: design.name,
                                isSelected: settings.design == design)
                         .onTapGesture { settings.design = design }
@@ -75,9 +80,24 @@ struct SettingsView: View {
                 }
             }
 
+            Divider()
+                .padding(.top, 24)
+                .padding(.bottom, 16)
+
+            Toggle("Six zones only", isOn: $settings.sixZones)
+                .toggleStyle(.switch)
+
+            Text(settings.sixZones
+                 ? "Halves and quarters, the original ring. Left and Right take a generous 90° each."
+                 : "Adds Top and Bottom. Left and Right narrow to 50° to make room, and the quarters to 45°.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.top, 6)
+
             Spacer(minLength: 0)
         }
-        .padding(20)
+        .padding(24)
     }
 
     // MARK: - Right: the knobs
@@ -85,7 +105,10 @@ struct SettingsView: View {
     private var form: some View {
         Form {
             Section {
-                LabeledContent("Color") { swatches }
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Color")
+                    swatches
+                }
 
                 slider("Size", value: $settings.ringRadius,
                        range: Settings.Range.ringRadius, low: "Small", high: "Large")
@@ -160,7 +183,7 @@ struct SettingsView: View {
     // MARK: - Pieces
 
     private var swatches: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 6) {
             ForEach(Tint.allCases) { tint in
                 Swatch(color: Color(nsColor: tint.color),
                        isSelected: settings.selectedTint == tint)
@@ -180,14 +203,17 @@ struct SettingsView: View {
         }
     }
 
-    /// The end labels are plain text rather than the slider's own value labels,
-    /// which pick up the tint and would turn every row into colored type.
+    /// Title above the track rather than beside it: the inspector is 340 pt
+    /// wide, and a label-plus-track row would leave the track too short to aim
+    /// with. The end labels are plain text rather than the slider's own value
+    /// labels, which pick up the tint and would turn every row into colored type.
     private func slider(_ title: String, value: Binding<Double>,
                         range: ClosedRange<Double>, low: String, high: String) -> some View {
-        LabeledContent(title) {
-            HStack(spacing: 10) {
+        VStack(alignment: .leading, spacing: 5) {
+            Text(title)
+            HStack(spacing: 8) {
                 Text(low)
-                Slider(value: value, in: range).frame(width: 190)
+                Slider(value: value, in: range)
                 Text(high)
             }
             .font(.caption)
@@ -260,7 +286,7 @@ private struct DesignCell: View {
     var body: some View {
         VStack(spacing: 6) {
             RingThumbnail(style: style)
-                .frame(height: 68)
+                .frame(height: 104)
                 .frame(maxWidth: .infinity)
                 .background(Color.primary.opacity(0.06))
                 .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))

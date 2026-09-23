@@ -2,7 +2,7 @@
 
 A tiny, native macOS window snapper. Hold the **Globe (🌐 / fn)** key, flick the mouse in a direction, release. The window snaps.
 
-- Eight directional zones (four halves + four quarters), selected by mouse *direction*, not position.
+- Eight directional zones (four halves + four quarters), selected by mouse *direction*, not position — or six, if you prefer the original ring.
 - Release without moving → maximize to the visible screen area.
 - Escape → cancel, nothing moves.
 - Six ring designs, each with its own parameter, chosen from a gallery next to a live preview. Nothing to save; every control commits as you touch it.
@@ -50,6 +50,29 @@ resolved by the half-open rule, so a perfect 135° flick snapped Left; that
 surprise is gone. Ranges are still half-open — a boundary angle belongs to the
 zone that starts there — and `DoweyTests` pins every boundary.
 
+### Six zones, if you want them
+
+**Settings → Six zones only** puts the original table back: halves at 90°,
+quarters at 45°, no Top or Bottom. It exists because the eight-zone table buys
+those two zones by narrowing everything else — if you never flick vertically,
+you are paying for zones you do not want with tolerance on the ones you do.
+
+| Zone | Six-zone range | Eight-zone range |
+|---|---|---|
+| Right | −45° … 45° | −25° … 25° |
+| Top-Right | 45° … 90° | 25° … 70° |
+| Top | — | 70° … 110° |
+| Top-Left | 90° … 135° | 110° … 155° |
+| Left | 135° … 225° | 155° … 205° |
+| Bottom-Left | 225° … 270° | 205° … 250° |
+| Bottom | — | 250° … 290° |
+| Bottom-Right | 270° … 315° | 290° … 335° |
+
+Switching is instant and affects the next gesture; the ring redraws itself from
+whichever table is live, so no design has to know which layout it is showing.
+In the six-zone layout a straight-up flick lands in a quarter — 90° is a
+boundary there, so it resolves to Top-Left by the half-open rule.
+
 Two behaviors worth knowing:
 
 - **Deadzone re-entry.** Moving back inside the 20 pt radius returns the ring to its neutral state and dismisses the preview, so releasing there maximizes. The circle at the center of the ring *is* that target — it is drawn at exactly the 20 pt deadzone radius, and it lights up whenever releasing would maximize.
@@ -58,6 +81,38 @@ Two behaviors worth knowing:
 Minimize is not implemented in v1. Zone angles and the trigger key are hardcoded; the deadzone radius is the **Trigger distance** setting.
 
 ---
+
+## Installing a release build
+
+Downloading [a release](https://github.com/aarontran321/dowey/releases) gets you
+a signed but **not notarized** app, because notarization requires the $99/year
+Apple Developer Program and Dowey is not enrolled. macOS will block the first
+launch. This is expected and it is a one-time step.
+
+> On macOS 15 and later, right-click → Open **no longer works** for unnotarized
+> apps. Apple removed that bypass. Use one of the two routes below.
+
+**The one-liner.** Strip the quarantine flag macOS attached at download, then
+open normally:
+
+```bash
+xattr -dr com.apple.quarantine /Applications/Dowey.app && open /Applications/Dowey.app
+```
+
+**Or through System Settings**, if you would rather not run a command:
+
+1. Unzip and drag `Dowey.app` to `/Applications`.
+2. Double-click it. macOS refuses and offers only **Done**. Click Done.
+3. **System Settings → Privacy & Security**, scroll to Security. A line reads
+   *"Dowey.app was blocked to protect your Mac."*
+4. Click **Open Anyway**, authenticate, then confirm **Open Anyway** again.
+
+Either way it is once per install, not once per launch. After that, Dowey still
+needs the two permissions in [Setup](#2-grant-two-permissions) — those are
+enforced by TCC and no signing certificate can waive them.
+
+To build from source instead, which sidesteps all of the above, see
+[Build and install](#build-and-install).
 
 ## Setup
 
@@ -123,7 +178,7 @@ xcodebuild -project Dowey.xcodeproj -scheme Dowey -configuration Debug test
 
 Click the circle in the menu bar → **Settings…** (or ⌘, with the window focused; launching Dowey again opens it too).
 
-Two columns. On the left, what it looks like: the live preview on top, the design gallery under it. On the right, the knobs for whatever is selected. **There is no Save button** — each control writes to `UserDefaults` in its setter, and the next gesture reads it.
+Two even columns. On the left, what it looks like: the live preview on top, the design gallery under it, and the zone-layout switch at the bottom. On the right, the knobs for whatever is selected. Neither column is privileged — both take half the window. **There is no Save button** — each control writes to `UserDefaults` in its setter, and the next gesture reads it.
 
 The preview is not an illustration. It is a `RadialHUDView` and a `PreviewOverlayView` — the same two classes the gesture draws with — on a miniature desktop, with directions resolved by the same `ZoneMath`. Move the pointer across it and it arms, picks zones and highlights destinations exactly as the real gesture does, at actual size. The gallery thumbnails are the same view again at a miniature scale, so a design cannot advertise itself as something other than what it draws.
 

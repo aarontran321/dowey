@@ -5,6 +5,26 @@ All notable changes to Dowey are documented here. Versions follow
 the public shape — the gesture, the eight zones, and the names and meanings of
 the settings — is stable: a breaking change to any of them takes a major bump.
 
+## [1.2.1] — 2026-09-23
+
+### Added
+- **Six zones only.** A switch in Settings drops Top and Bottom and restores
+  the original table — halves at 90°, quarters at 45°. The eight-zone layout
+  buys its two extra zones by narrowing everything else; this is the way out
+  for anyone who never flicks vertically. The ring, the lookup and every design
+  read one table, so nothing can disagree about where a zone begins.
+
+### Changed
+- The settings window is two even columns again. The left holds the preview,
+  the gallery and the new zone switch; the right holds the controls. Gallery
+  thumbnails grew from 68 to 104 pt, and inspector rows stack their label above
+  the control.
+
+### Fixed
+- Install instructions said to right-click → Open, which macOS 15 removed for
+  unnotarized apps. The README now documents the `xattr` one-liner and the
+  System Settings route, and says plainly that Dowey is not notarized and why.
+
 ## [1.2.0] — 2026-09-23
 
 ### Added
