@@ -54,6 +54,15 @@ struct SettingsView: View {
     // MARK: - Left: preview and gallery
 
     private var stage: some View {
+        ScrollView {
+            stageContent
+        }
+    }
+
+    /// Scrolled, because the preview is sized from the ring's own maximum and
+    /// the gallery grows with the design count — neither is something the
+    /// window height can be assumed to cover.
+    private var stageContent: some View {
         VStack(alignment: .leading, spacing: 0) {
             GesturePreview(style: settings.style)
                 .frame(height: GesturePreviewView.preferredHeight)

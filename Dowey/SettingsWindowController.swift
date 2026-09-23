@@ -33,6 +33,8 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
 
     static let shared = SettingsWindowController()
 
+    private static let defaultContentSize = NSSize(width: 1060, height: 720)
+
     private init() {
         super.init(window: nil)
     }
@@ -67,7 +69,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     }
 
     private func makeWindow() -> NSWindow {
-        let window = SettingsWindow(contentRect: NSRect(x: 0, y: 0, width: 1060, height: 720),
+        let window = SettingsWindow(contentRect: NSRect(origin: .zero, size: Self.defaultContentSize),
                                     styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
                                     backing: .buffered,
                                     defer: false)
@@ -93,12 +95,27 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         // No material here: each column of SettingsView brings its own, so the
         // sidebar and the content pane read as two surfaces rather than one.
         let host = NSHostingView(rootView: SettingsView(settings: .shared))
+        // Without this the hosting view publishes its SwiftUI content size as
+        // constraints on the window, and the window obeys them: the form's
+        // natural height is over 1000 pt, which grew the window taller than a
+        // laptop screen. The window owns its size; the columns scroll.
+        host.sizingOptions = []
 
         window.contentView = host
         window.center()
         // Restores the size and position from the last visit, which is what
         // makes tearing the window down invisible to the user.
         window.setFrameAutosaveName("DoweySettings")
+        // A frame saved by a build that let the hosting view dictate the size
+        // can be taller than the display; AppKit restores it verbatim, so an
+        // upgrade would inherit an unusable window. Trimming such a frame to
+        // fit would leave it filling the screen edge to edge, so a frame that
+        // does not fit is discarded for the default size instead.
+        if let screen = window.screen ?? NSScreen.main,
+           !screen.visibleFrame.contains(window.frame) {
+            window.setContentSize(Self.defaultContentSize)
+            window.center()
+        }
         window.delegate = self
 
         return window

@@ -6,6 +6,18 @@ the public shape — the gesture, the zone layouts, and the names and meanings
 of the settings — is stable: a breaking change to any of them takes a major
 bump.
 
+## [1.3.2] — 2026-09-23
+
+### Fixed
+- **The settings window could open taller than the screen.** `NSHostingView`
+  publishes its SwiftUI content size as constraints on the window, and the
+  window obeyed them: the form's natural height is over 1000 pt, which grew the
+  window to 1630 pt of content against a laptop's 882 pt of usable height. The
+  window now owns its own size and both columns scroll. A saved frame that
+  does not fit the display is discarded for the default size rather than
+  trimmed, so upgrading from the broken build does not leave you with a window
+  stretched edge to edge.
+
 ## [1.3.1] — 2026-09-23
 
 ### Changed
