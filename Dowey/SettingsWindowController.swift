@@ -3,8 +3,8 @@
 //  Dowey
 //
 //  The window around SettingsView: transparent titlebar, vibrant columns,
-//  nothing else. Built on first open and kept afterwards, so an app that has
-//  never been configured still owns no window.
+//  nothing else. Built on demand and torn down again on close, so an app that
+//  is not being configured owns no window and none of SwiftUI's machinery.
 //
 
 import AppKit
@@ -29,11 +29,44 @@ private final class SettingsWindow: NSWindow {
     }
 }
 
-final class SettingsWindowController: NSWindowController {
+final class SettingsWindowController: NSWindowController, NSWindowDelegate {
 
     static let shared = SettingsWindowController()
 
     private init() {
+        super.init(window: nil)
+    }
+
+    required init?(coder: NSCoder) { fatalError("not used") }
+
+    /// An `.accessory` app is never frontmost on its own — without the activate
+    /// the window would open behind whatever the user was looking at.
+    func show() {
+        NSApp.activate(ignoringOtherApps: true)
+        if window == nil { window = makeWindow() }
+        window?.makeKeyAndOrderFront(nil)
+    }
+
+    /// Closing frees the window and the whole SwiftUI hierarchy under it.
+    ///
+    /// This recovers a few MB, not the ~27 MB that opening Settings costs.
+    /// Most of that is SwiftUI initializing itself, which stays up for the life
+    /// of the process, and freed pages the allocator keeps rather than returns.
+    /// `malloc_zone_pressure_relief` was measured here and made no difference,
+    /// so it is deliberately absent. What this does buy is correct ownership:
+    /// no retained view hierarchy, tracking area or store observer belonging to
+    /// a window the user has dismissed.
+    ///
+    /// The release is deferred one turn of the run loop so the window is not
+    /// deallocated mid-close.
+    func windowWillClose(_ notification: Notification) {
+        DispatchQueue.main.async { [weak self] in
+            self?.window?.delegate = nil
+            self?.window = nil
+        }
+    }
+
+    private func makeWindow() -> NSWindow {
         let window = SettingsWindow(contentRect: NSRect(x: 0, y: 0, width: 1060, height: 720),
                                     styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
                                     backing: .buffered,
@@ -53,6 +86,9 @@ final class SettingsWindowController: NSWindowController {
         // paint one underneath it.
         window.isOpaque = false
         window.backgroundColor = .clear
+        // ARC owns the window now that the controller drops it on close; the
+        // AppKit-era auto-release on close would free it a second time.
+        window.isReleasedWhenClosed = false
 
         // No material here: each column of SettingsView brings its own, so the
         // sidebar and the content pane read as two surfaces rather than one.
@@ -60,17 +96,11 @@ final class SettingsWindowController: NSWindowController {
 
         window.contentView = host
         window.center()
+        // Restores the size and position from the last visit, which is what
+        // makes tearing the window down invisible to the user.
         window.setFrameAutosaveName("DoweySettings")
+        window.delegate = self
 
-        super.init(window: window)
-    }
-
-    required init?(coder: NSCoder) { fatalError("not used") }
-
-    /// An `.accessory` app is never frontmost on its own — without the activate
-    /// the window would open behind whatever the user was looking at.
-    func show() {
-        NSApp.activate(ignoringOtherApps: true)
-        window?.makeKeyAndOrderFront(nil)
+        return window
     }
 }

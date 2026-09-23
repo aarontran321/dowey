@@ -6,6 +6,22 @@ the public shape — the gesture, the zone layouts, and the names and meanings
 of the settings — is stable: a breaking change to any of them takes a major
 bump.
 
+## [1.3.1] — 2026-09-23
+
+### Changed
+- The settings window and its SwiftUI hierarchy are released when you close it,
+  rather than kept for the life of the process. Recovers about 5 MB and, more
+  to the point, stops a dismissed window from owning a tracking area and a
+  store observer.
+
+### Fixed
+- The measured-performance section was wrong about memory. It quoted 41.5 MB of
+  `ri_resident_size`, which counts framework pages shared with every other app;
+  the number that is actually charged to Dowey is its physical footprint, and
+  that is **10.5 MB** with Settings unopened. The section now states which
+  metric it uses, and the per-gesture costs are re-measured on the eight-zone
+  ring — the old "2.27 ms per sweep" figure predated it.
+
 ## [1.3.0] — 2026-09-23
 
 ### Added

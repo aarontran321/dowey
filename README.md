@@ -226,27 +226,56 @@ That rewrites `Dowey/Assets.xcassets/AppIcon.appiconset` in place. Edit the draw
 
 ## Measured performance
 
-CPU here is measured as exact process CPU-time from `proc_pid_rusage`, divided by
-wall time, expressed against a single core. Each configuration was run three
-times, alternating between builds so system drift could not favour either one.
+Two different numbers get called "memory" and they differ by 4x here, so this
+section says which one it means. **Physical footprint** is what Activity Monitor
+shows in its Memory column and what the system charges against you — it excludes
+framework pages shared with every other app. `ri_resident_size` includes them,
+which is why it reports 86 MB for a process whose footprint is 31 MB. Everything
+below is footprint, from `vmmap --summary`.
 
-| Scenario | CPU | What it means |
-|---|---|---|
-| Idle, no input | **0.0005%** | ~5 µs of CPU per second; 5 wakeups per 20 s |
-| Idle, cursor moving (150 events/s) | **0.0000%** | Unmeasurable — 1 wakeup in 8 s |
-| Active gesture, continuous sweep | **0.17%** | 2.27 ms of CPU per full sweep of the ring |
+CPU is exact process CPU-time from `proc_pid_rusage` divided by wall time,
+against a single core. Measured on 1.3.0, three runs, quitting and relaunching
+between each.
 
-The active figure is deliberately pessimistic: it comes from a synthetic load of
-1200 mouse events and 10 complete gestures inside 8 seconds, sweeping through all
-every zone twice per gesture. Real use is nowhere near that. At 0.17% of one core
-on a 10-core machine, that is 0.017% of total capacity.
+| Scenario | Footprint | CPU | Wakeups |
+|---|---|---|---|
+| Launched, Settings never opened | **10.5 MB** | **0.00029%** | 1 per 10 s |
+| Settings window open | 36.1 MB | — | — |
+| Settings closed again | 31.2 MB | 0.00029% | 1 per 10 s |
 
-The important idle result is the second row. A global `NSEvent` monitor registered
-only for `flagsChanged` is *not* woken by mouse movement — the app stays blocked in
-`mach_msg` and the window server never dispatches to it. Idle cost is therefore
-independent of what the user is doing with the mouse.
+The app spends its life in the first row: a menu-bar item, a `flagsChanged`
+monitor and nothing else. 0.00029% of one core is about 3 µs of CPU per second.
+A global `NSEvent` monitor registered only for `flagsChanged` is not woken by
+mouse movement, so idle cost does not depend on what the pointer is doing.
 
-### Before and after the Core Animation rewrite
+**Opening Settings costs about 26 MB and closing it returns about 5.**  Dowey
+drops the window and its whole SwiftUI hierarchy on close, which is what those
+5 MB are. The rest is SwiftUI initializing itself — once up, it stays up for the
+life of the process — plus pages the allocator holds rather than returns to the
+system. `malloc_zone_pressure_relief` was measured here and recovered nothing
+beyond noise, so it is not used. If footprint matters to you, the lever is not
+visiting Settings, not anything the app can do after you have.
+
+### The gesture itself
+
+Cost per zone change, which is the only work a gesture does between key-down and
+release. Measured in isolation over 2000 changes per design:
+
+| Design | Per zone change |
+|---|---|
+| Segments | 0.13 µs |
+| Blade | 0.13 µs |
+| Dots | 0.20 µs |
+| Halo | 0.26 µs |
+| Wedges | 0.53 µs |
+| Screen Map | 0.77 µs |
+
+A full eight-zone sweep of the Segments ring is **0.001 ms**. There is nothing
+to optimize here: an incremental highlight that touched only the two layers that
+changed would save a fraction of a microsecond and cost real complexity, so the
+highlight pass still walks every zone and assigns its colors outright.
+
+### History: the Core Animation rewrite
 
 Both overlays originally rasterized through `draw(_:)`, with the preview drawing
 into a screen-sized view on every zone change. They now hold their appearance as
@@ -256,15 +285,12 @@ zone change is a frame change plus two color assignments.
 | Metric | Before | After | Change |
 |---|---|---|---|
 | Active gesture CPU | 0.208% | 0.175% | **−16%** |
-| CPU per full sweep | 2.71 ms | 2.27 ms | **−16%** |
 | Interrupt wakeups per run | 569 | 261 | **−54%** |
-| Resident memory | 64.4 MB | 41.5 MB | **−36%** |
-| Idle CPU | 0.0005% | 0.0005% | unchanged |
 
-Idle was already at the floor and did not move, which is the expected result —
-there is no work to remove from a process that is asleep. The wakeup reduction
-matters most for battery: wakeups, not raw CPU percentage, are what prevent the
-package from staying in a low-power state.
+Those two were measured on the six-zone build under a synthetic load of 1200
+mouse events and 10 gestures in 8 seconds, against a whole running app rather
+than the isolated ring. They are not comparable to the per-zone-change table
+above and are kept only as a record of that change.
 
 ## Checking it yourself in Activity Monitor
 
@@ -275,8 +301,9 @@ polling and is a bug.
 
 Then perform six or seven snaps in a row, sweeping the mouse around all eight zones
 so the highlight changes repeatedly. `% CPU` should stay well under 1% and drop
-straight back to `0.0` the moment you release. Memory should settle near 40 MB and
-stay flat across many gestures.
+straight back to `0.0` the moment you release. Memory should stay flat across
+many gestures — Activity Monitor's Memory column reads about **10 MB** if you
+have not opened Settings this launch, and about **31 MB** if you have.
 
 Why it costs nothing at rest: there is no timer anywhere in the codebase. While
 idle, exactly one `flagsChanged` monitor is installed and both overlay windows are
