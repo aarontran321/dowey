@@ -72,7 +72,7 @@ struct Style: Equatable {
 // MARK: - Ring design
 
 /// How the ring draws itself. Every design answers the same two questions —
-/// which of the six directions is live, and is the maximize target selected —
+/// which of the eight directions is live, and is the maximize target selected —
 /// and each one carries a single parameter of its own.
 enum RingDesign: String, CaseIterable, Identifiable {
     case segments, wedges, dots, blade, map, halo
@@ -92,7 +92,7 @@ enum RingDesign: String, CaseIterable, Identifiable {
 
     var summary: String {
         switch self {
-        case .segments: return "Six arcs around the cursor. The one you are pointing at lights up and thickens."
+        case .segments: return "Eight arcs around the cursor. The one you are pointing at lights up and thickens."
         case .wedges:   return "Filled slices instead of strokes — the zones read as areas, not hints."
         case .dots:     return "A dot per direction. The live one swells and fills. The quietest design."
         case .blade:    return "Nothing but the center target until you commit, then one bar points the way."

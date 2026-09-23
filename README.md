@@ -2,7 +2,7 @@
 
 A tiny, native macOS window snapper. Hold the **Globe (🌐 / fn)** key, flick the mouse in a direction, release. The window snaps.
 
-- Six directional zones (halves + quarters), selected by mouse *direction*, not position.
+- Eight directional zones (four halves + four quarters), selected by mouse *direction*, not position.
 - Release without moving → maximize to the visible screen area.
 - Escape → cancel, nothing moves.
 - Six ring designs, each with its own parameter, chosen from a gallery next to a live preview. Nothing to save; every control commits as you touch it.
@@ -24,16 +24,31 @@ Requires macOS 13 or later. Not sandboxed — it moves other apps' windows, whic
 
 Direction is measured as a standard math angle from where the cursor was when you pressed the key: 0° = right, increasing counterclockwise.
 
-| Zone | Angle range | Result |
-|---|---|---|
-| Right | −45° … 45° | Right half |
-| Top-Right | 45° … 90° | Top-right quarter |
-| Top-Left | 90° … 135° | Top-left quarter |
-| Left | 135° … 225° | Left half |
-| Bottom-Left | 225° … 270° | Bottom-left quarter |
-| Bottom-Right | 270° … 315° | Bottom-right quarter |
+| Zone | Angle range | Width | Result |
+|---|---|---|---|
+| Right | −25° … 25° | 50° | Right half |
+| Top-Right | 25° … 70° | 45° | Top-right quarter |
+| Top | 70° … 110° | 40° | Top half |
+| Top-Left | 110° … 155° | 45° | Top-left quarter |
+| Left | 155° … 205° | 50° | Left half |
+| Bottom-Left | 205° … 250° | 45° | Bottom-left quarter |
+| Bottom | 250° … 290° | 40° | Bottom half |
+| Bottom-Right | 290° … 335° | 45° | Bottom-right quarter |
 
-Ranges are half-open — a boundary angle belongs to the zone that starts there, so an exact 45° diagonal is Top-Right and an exact 135° diagonal is Left. `DoweyTests` pins every boundary.
+The widths are unequal on purpose, and they are why eight zones fit where six
+did. A blind flick's accuracy plateaus around ±20°, so the 90° that Left and
+Right used to own was angle held for no return; at 50° they are still trivial
+to hit, and the harvested degrees pay for Top and Bottom. The diagonals keep
+45° — a diagonal is the hardest direction to estimate — and the vertical
+halves take 40° rather than whatever was left over, because a vertical flick
+comes from the arm rather than the wrist and a sloppy one would otherwise land
+in a quarter. Nothing is narrower than ±20°.
+
+Every direction you would actually aim at now sits in the *middle* of its zone.
+Under the old six-zone table the exact diagonals fell on boundaries and
+resolved by the half-open rule, so a perfect 135° flick snapped Left; that
+surprise is gone. Ranges are still half-open — a boundary angle belongs to the
+zone that starts there — and `DoweyTests` pins every boundary.
 
 Two behaviors worth knowing:
 
@@ -114,11 +129,11 @@ The preview is not an illustration. It is a `RadialHUDView` and a `PreviewOverla
 
 ### The six designs
 
-Every design answers the same two questions — which of the six directions is live, and is the maximize target selected — and each carries one parameter of its own. That parameter is remembered per design, so switching away and back does not reset how you had it tuned.
+Every design answers the same two questions — which of the eight directions is live, and is the maximize target selected — and each carries one parameter of its own. That parameter is remembered per design, so switching away and back does not reset how you had it tuned.
 
 | Design | What it draws | Its own slider |
 |---|---|---|
-| **Segments** | Six arcs; the live one thickens and tints. The original. | Segment gap |
+| **Segments** | Eight arcs; the live one thickens and tints. The original. | Segment gap |
 | **Wedges** | Filled slices — the zones read as areas, not hints. | Fill |
 | **Dots** | One dot per direction; the live one swells and fills. | Dot size |
 | **Blade** | Only the center target until you commit, then one bar points the way. | Width |
@@ -164,11 +179,11 @@ times, alternating between builds so system drift could not favour either one.
 |---|---|---|
 | Idle, no input | **0.0005%** | ~5 µs of CPU per second; 5 wakeups per 20 s |
 | Idle, cursor moving (150 events/s) | **0.0000%** | Unmeasurable — 1 wakeup in 8 s |
-| Active gesture, continuous sweep | **0.17%** | 2.27 ms of CPU per full six-zone sweep |
+| Active gesture, continuous sweep | **0.17%** | 2.27 ms of CPU per full sweep of the ring |
 
 The active figure is deliberately pessimistic: it comes from a synthetic load of
 1200 mouse events and 10 complete gestures inside 8 seconds, sweeping through all
-six zones twice per gesture. Real use is nowhere near that. At 0.17% of one core
+every zone twice per gesture. Real use is nowhere near that. At 0.17% of one core
 on a 10-core machine, that is 0.017% of total capacity.
 
 The important idle result is the second row. A global `NSEvent` monitor registered
@@ -186,7 +201,7 @@ zone change is a frame change plus two color assignments.
 | Metric | Before | After | Change |
 |---|---|---|---|
 | Active gesture CPU | 0.208% | 0.175% | **−16%** |
-| CPU per six-zone sweep | 2.71 ms | 2.27 ms | **−16%** |
+| CPU per full sweep | 2.71 ms | 2.27 ms | **−16%** |
 | Interrupt wakeups per run | 569 | 261 | **−54%** |
 | Resident memory | 64.4 MB | 41.5 MB | **−36%** |
 | Idle CPU | 0.0005% | 0.0005% | unchanged |
@@ -203,7 +218,7 @@ column for about 30 seconds without touching anything. It should read `0.0` the
 whole time. Anything that sits at a steady non-zero number means something is
 polling and is a bug.
 
-Then perform six or seven snaps in a row, sweeping the mouse around all six zones
+Then perform six or seven snaps in a row, sweeping the mouse around all eight zones
 so the highlight changes repeatedly. `% CPU` should stay well under 1% and drop
 straight back to `0.0` the moment you release. Memory should settle near 40 MB and
 stay flat across many gestures.

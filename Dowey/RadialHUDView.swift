@@ -2,7 +2,7 @@
 //  RadialHUDView.swift
 //  Dowey
 //
-//  The radial ring shown around the gesture origin. Six stroked arc segments,
+//  The radial ring shown around the gesture origin. Eight stroked arc segments,
 //  hollow center (the center *is* the maximize/deadzone target).
 //
 //  Every metric and color comes from an `Style` snapshot, so the same view
@@ -58,12 +58,25 @@ final class RadialHUDView: NSView {
         static let mapAspect: CGFloat = 0.625
     }
 
+    /// Dot radius, capped so eight dots cannot collide on a small ring.
+    ///
+    /// Dots sit at their arc's midpoint, so the tightest neighbors are the ones
+    /// flanking the narrowest zone. Taking that arc's full width as the angular
+    /// spacing is conservative — the real gap is half of each of two arcs, never
+    /// less — and turns into a chord at `ringRadius`. The lit dot is 1.7x, and
+    /// 0.9 leaves a hair of air between two lit neighbors at the worst setting.
+    private static func dotRadius(for style: Style) -> CGFloat {
+        let tightest = Zone.allCases.map { $0.arc.end - $0.arc.start }.min() ?? 45
+        let chord = 2 * style.ringRadius * sin(tightest * .pi / 360)
+        return min(style.detail, chord * 0.9 / 2 / 1.7)
+    }
+
     /// How far from the center the design actually paints. Drives the window
     /// size, so nothing is ever clipped by its own overlay.
     private static func outerReach(_ style: Style) -> CGFloat {
         switch style.design {
         case .segments, .wedges: return style.ringRadius + style.activeRingThickness / 2
-        case .dots:              return style.ringRadius + style.detail * 1.7
+        case .dots:              return style.ringRadius + dotRadius(for: style) * 1.7
         case .blade:             return style.ringRadius + 6 + style.detail / 2
         case .halo:              return style.ringRadius + style.activeRingThickness / 2 + style.detail
         case .map:               return style.ringRadius * 1.2
@@ -172,9 +185,16 @@ final class RadialHUDView: NSView {
     }
 
     /// Shared by Segments and Halo: one stroked arc per zone.
-    private func buildArcs(gap: CGFloat, cap: CAShapeLayerLineCap) {
+    ///
+    /// `gap` is in degrees and is eaten off *both* ends, so a flat subtraction
+    /// bites twice as hard into the 40° vertical halves as into the 50° ones —
+    /// and at the top of the slider it would leave them stubs. Clamping it to a
+    /// quarter of each arc keeps the widest setting proportional across zones,
+    /// and keeps the swept angle positive no matter what the arc table says.
+    private func buildArcs(gap requestedGap: CGFloat, cap: CAShapeLayerLineCap) {
         for zone in Zone.allCases {
             let arc = zone.arc
+            let gap = min(requestedGap, (arc.end - arc.start) / 4)
             let path = CGMutablePath()
             path.addArc(center: center,
                         radius: style.ringRadius,
@@ -262,6 +282,8 @@ final class RadialHUDView: NSView {
         outline.lineWidth = max(1, style.ringThickness * 0.4)
 
         let tileRadius = max(0, style.detail * 0.6)
+        // The half tiles overlap the quarters they contain. Harmless: exactly
+        // one tile is ever unhidden, so nothing is ever composited over.
         for zone in Zone.allCases {
             let shape = CAShapeLayer()
             shape.path = CGPath(roundedRect: zone.rect(in: screen).insetBy(dx: 1.5, dy: 1.5),
@@ -339,7 +361,8 @@ final class RadialHUDView: NSView {
                 shape.lineWidth = on ? 1.5 : 1
 
             case .dots:
-                let r = on ? style.detail * 1.7 : style.detail
+                let base = RadialHUDView.dotRadius(for: style)
+                let r = on ? base * 1.7 : base
                 let p = point(atAngle: midAngle(of: zone), radius: style.ringRadius)
                 shape.path = CGPath(ellipseIn: CGRect(x: p.x - r, y: p.y - r,
                                                       width: r * 2, height: r * 2), transform: nil)

@@ -2,8 +2,36 @@
 
 All notable changes to Dowey are documented here. Versions follow
 [Semantic Versioning](https://semver.org): `MAJOR.MINOR.PATCH`. From 1.0.0 on,
-the public shape — the gesture, the six zones, and the names and meanings of
+the public shape — the gesture, the eight zones, and the names and meanings of
 the settings — is stable: a breaking change to any of them takes a major bump.
+
+## [1.2.0] — 2026-09-23
+
+### Added
+- **Top and Bottom zones.** The ring now has eight directions: a flick straight
+  up snaps to the top half of the screen, straight down to the bottom half.
+
+### Changed
+- The arc table was re-cut to pay for them. Left and Right drop from 90° to
+  50° — accuracy on a blind flick plateaus around ±20°, so the rest was angle
+  held for no return — the quarters give up 5° each to 45°, and Top and Bottom
+  take 40°. No zone is narrower than ±20°.
+- Exact diagonals now land in their own corner zone. They used to sit *on* a
+  boundary and resolve by the half-open rule, so a perfect 135° flick snapped
+  Left; every direction a user aims at is now centered in its zone.
+- Segment gap is clamped to a quarter of each arc, so the widest setting stays
+  proportional across zones of different widths instead of gnawing the narrow
+  ones down to stubs.
+- Dot size is capped against the ring radius, so eight dots cannot collide on
+  a small ring.
+
+### Upgrading
+
+Every zone from 1.1.0 still exists, under the same name, snapping to the same
+rect. What changed is how much slop each one tolerates: Left and Right accept
+±25° rather than ±45°. A flick you used to throw 30° above horizontal landed
+on Right and now lands on Top-Right. If your aim is casual, expect a day of
+recalibration — the ring shows the new boundaries while you hold the key.
 
 ## [1.1.0] — 2026-09-22
 

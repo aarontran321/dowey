@@ -133,7 +133,7 @@ final class GlobalEventMonitor {
 
         // Shown immediately with the center circle lit and the full-screen
         // destination already outlined, so the maximize target gets the same
-        // preview treatment as the six directional zones.
+        // preview treatment as the eight directional zones.
         hud.show(at: origin)
         showMaximizePreview(near: origin)
 

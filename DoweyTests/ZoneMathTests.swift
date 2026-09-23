@@ -16,43 +16,61 @@ final class ZoneMathTests: XCTestCase {
     /// Every boundary is half-open `[start, end)`: the boundary value belongs to
     /// the zone that starts there.
     func testZoneBoundaries() {
-        XCTAssertEqual(Zone.forAngle(degrees: 45), .topRight)
-        XCTAssertEqual(Zone.forAngle(degrees: 90), .topLeft)
-        XCTAssertEqual(Zone.forAngle(degrees: 135), .left)
-        XCTAssertEqual(Zone.forAngle(degrees: 225), .bottomLeft)
-        XCTAssertEqual(Zone.forAngle(degrees: 270), .bottomRight)
-        XCTAssertEqual(Zone.forAngle(degrees: 315), .right)
+        XCTAssertEqual(Zone.forAngle(degrees: 25), .topRight)
+        XCTAssertEqual(Zone.forAngle(degrees: 70), .top)
+        XCTAssertEqual(Zone.forAngle(degrees: 110), .topLeft)
+        XCTAssertEqual(Zone.forAngle(degrees: 155), .left)
+        XCTAssertEqual(Zone.forAngle(degrees: 205), .bottomLeft)
+        XCTAssertEqual(Zone.forAngle(degrees: 250), .bottom)
+        XCTAssertEqual(Zone.forAngle(degrees: 290), .bottomRight)
+        XCTAssertEqual(Zone.forAngle(degrees: 335), .right)
     }
 
     func testJustBelowEachBoundary() {
         let epsilon: CGFloat = 0.001
-        XCTAssertEqual(Zone.forAngle(degrees: 45 - epsilon), .right)
-        XCTAssertEqual(Zone.forAngle(degrees: 90 - epsilon), .topRight)
-        XCTAssertEqual(Zone.forAngle(degrees: 135 - epsilon), .topLeft)
-        XCTAssertEqual(Zone.forAngle(degrees: 225 - epsilon), .left)
-        XCTAssertEqual(Zone.forAngle(degrees: 270 - epsilon), .bottomLeft)
-        XCTAssertEqual(Zone.forAngle(degrees: 315 - epsilon), .bottomRight)
+        XCTAssertEqual(Zone.forAngle(degrees: 25 - epsilon), .right)
+        XCTAssertEqual(Zone.forAngle(degrees: 70 - epsilon), .topRight)
+        XCTAssertEqual(Zone.forAngle(degrees: 110 - epsilon), .top)
+        XCTAssertEqual(Zone.forAngle(degrees: 155 - epsilon), .topLeft)
+        XCTAssertEqual(Zone.forAngle(degrees: 205 - epsilon), .left)
+        XCTAssertEqual(Zone.forAngle(degrees: 250 - epsilon), .bottomLeft)
+        XCTAssertEqual(Zone.forAngle(degrees: 290 - epsilon), .bottom)
+        XCTAssertEqual(Zone.forAngle(degrees: 335 - epsilon), .bottomRight)
     }
 
     func testWraparound() {
         XCTAssertEqual(Zone.forAngle(degrees: 0), .right)
         XCTAssertEqual(Zone.forAngle(degrees: 360), .right)
         XCTAssertEqual(Zone.forAngle(degrees: 359.999), .right)
-        XCTAssertEqual(Zone.forAngle(degrees: -45), .right, "-45° is the start of the right zone")
-        XCTAssertEqual(Zone.forAngle(degrees: -44.999), .right)
-        XCTAssertEqual(Zone.forAngle(degrees: -45.001), .bottomRight)
+        XCTAssertEqual(Zone.forAngle(degrees: -25), .right, "-25° is the start of the right zone")
+        XCTAssertEqual(Zone.forAngle(degrees: -24.999), .right)
+        XCTAssertEqual(Zone.forAngle(degrees: -25.001), .bottomRight)
         XCTAssertEqual(Zone.forAngle(degrees: 720), .right)
         XCTAssertEqual(Zone.forAngle(degrees: -720), .right)
-        XCTAssertEqual(Zone.forAngle(degrees: 405), .topRight, "405° normalizes to 45°")
+        XCTAssertEqual(Zone.forAngle(degrees: 385), .topRight, "385° normalizes to 25°")
     }
 
-    func testMidpointsOfEveryZone() {
+    /// The eight cardinal/diagonal directions a user actually aims at. Each one
+    /// must sit in its own zone with room to spare, which is the point of the
+    /// unequal arc widths.
+    func testTheDirectionsUsersAimAt() {
         XCTAssertEqual(Zone.forAngle(degrees: 0), .right)
-        XCTAssertEqual(Zone.forAngle(degrees: 67.5), .topRight)
-        XCTAssertEqual(Zone.forAngle(degrees: 112.5), .topLeft)
+        XCTAssertEqual(Zone.forAngle(degrees: 45), .topRight)
+        XCTAssertEqual(Zone.forAngle(degrees: 90), .top)
+        XCTAssertEqual(Zone.forAngle(degrees: 135), .topLeft)
         XCTAssertEqual(Zone.forAngle(degrees: 180), .left)
-        XCTAssertEqual(Zone.forAngle(degrees: 247.5), .bottomLeft)
-        XCTAssertEqual(Zone.forAngle(degrees: 292.5), .bottomRight)
+        XCTAssertEqual(Zone.forAngle(degrees: 225), .bottomLeft)
+        XCTAssertEqual(Zone.forAngle(degrees: 270), .bottom)
+        XCTAssertEqual(Zone.forAngle(degrees: 315), .bottomRight)
+    }
+
+    /// No zone may be so narrow that a flick cannot land in it. ±20° is the
+    /// floor the arc table was designed around.
+    func testNoZoneIsNarrowerThanFortyDegrees() {
+        for zone in Zone.allCases {
+            let width = zone.arc.end - zone.arc.start
+            XCTAssertGreaterThanOrEqual(width, 40, "\(zone.displayName) is only \(width)° wide")
+        }
     }
 
     func testNormalizedDegrees() {
@@ -81,17 +99,20 @@ final class ZoneMathTests: XCTestCase {
         XCTAssertEqual(Zone.forDirection(origin: origin, point: CGPoint(x: 440, y: 590)), .topLeft)
         XCTAssertEqual(Zone.forDirection(origin: origin, point: CGPoint(x: 440, y: 410)), .bottomLeft)
         XCTAssertEqual(Zone.forDirection(origin: origin, point: CGPoint(x: 560, y: 410)), .bottomRight)
+        XCTAssertEqual(Zone.forDirection(origin: origin, point: CGPoint(x: 500, y: 590)), .top)
+        XCTAssertEqual(Zone.forDirection(origin: origin, point: CGPoint(x: 500, y: 410)), .bottom)
     }
 
-    /// An exact 45° diagonal sits on a boundary, so it resolves by the half-open
-    /// rule rather than to the "nearest looking" corner zone. Pinned here so the
-    /// behavior is a decision, not an accident.
-    func testExactDiagonalsResolveByHalfOpenRule() {
+    /// With six zones the exact diagonals sat *on* boundaries and resolved by
+    /// the half-open rule, which meant a perfect 135° flick snapped Left. The
+    /// eight-zone table centers each diagonal in its own 45° arc instead, so
+    /// the surprising case is gone. Pinned so it cannot come back.
+    func testExactDiagonalsLandInTheirOwnCorners() {
         let origin = CGPoint(x: 500, y: 500)
-        XCTAssertEqual(Zone.forDirection(origin: origin, point: CGPoint(x: 560, y: 560)), .topRight,   "45°")
-        XCTAssertEqual(Zone.forDirection(origin: origin, point: CGPoint(x: 440, y: 560)), .left,       "135°")
-        XCTAssertEqual(Zone.forDirection(origin: origin, point: CGPoint(x: 440, y: 440)), .bottomLeft, "225°")
-        XCTAssertEqual(Zone.forDirection(origin: origin, point: CGPoint(x: 560, y: 440)), .right,      "315°")
+        XCTAssertEqual(Zone.forDirection(origin: origin, point: CGPoint(x: 560, y: 560)), .topRight,    "45°")
+        XCTAssertEqual(Zone.forDirection(origin: origin, point: CGPoint(x: 440, y: 560)), .topLeft,     "135°")
+        XCTAssertEqual(Zone.forDirection(origin: origin, point: CGPoint(x: 440, y: 440)), .bottomLeft,  "225°")
+        XCTAssertEqual(Zone.forDirection(origin: origin, point: CGPoint(x: 560, y: 440)), .bottomRight, "315°")
     }
 
     // MARK: - Deadzone
@@ -118,6 +139,8 @@ final class ZoneMathTests: XCTestCase {
     func testHalfAndQuarterRects() {
         XCTAssertEqual(Zone.left.rect(in: visible), CGRect(x: 100, y: 50, width: 500, height: 800))
         XCTAssertEqual(Zone.right.rect(in: visible), CGRect(x: 600, y: 50, width: 500, height: 800))
+        XCTAssertEqual(Zone.top.rect(in: visible), CGRect(x: 100, y: 450, width: 1000, height: 400))
+        XCTAssertEqual(Zone.bottom.rect(in: visible), CGRect(x: 100, y: 50, width: 1000, height: 400))
         XCTAssertEqual(Zone.topLeft.rect(in: visible), CGRect(x: 100, y: 450, width: 500, height: 400))
         XCTAssertEqual(Zone.topRight.rect(in: visible), CGRect(x: 600, y: 450, width: 500, height: 400))
         XCTAssertEqual(Zone.bottomLeft.rect(in: visible), CGRect(x: 100, y: 50, width: 500, height: 400))
@@ -129,9 +152,13 @@ final class ZoneMathTests: XCTestCase {
     }
 
     func testZonesTileTheScreenWithoutOverlap() {
-        let halves = [Zone.left, .right].map { $0.rect(in: visible) }
-        XCTAssertEqual(halves[0].union(halves[1]), visible)
-        XCTAssertTrue(halves[0].intersection(halves[1]).isEmpty)
+        let sideHalves = [Zone.left, .right].map { $0.rect(in: visible) }
+        XCTAssertEqual(sideHalves[0].union(sideHalves[1]), visible)
+        XCTAssertTrue(sideHalves[0].intersection(sideHalves[1]).isEmpty)
+
+        let stackedHalves = [Zone.top, .bottom].map { $0.rect(in: visible) }
+        XCTAssertEqual(stackedHalves[0].union(stackedHalves[1]), visible)
+        XCTAssertTrue(stackedHalves[0].intersection(stackedHalves[1]).isEmpty)
 
         let quarters = [Zone.topLeft, .topRight, .bottomLeft, .bottomRight].map { $0.rect(in: visible) }
         XCTAssertEqual(quarters.reduce(CGRect.null) { $0.union($1) }, visible)
@@ -151,7 +178,7 @@ final class ZoneMathTests: XCTestCase {
     // MARK: - Arc table (§4 draws straight off this)
 
     func testArcsAreContiguousAndCoverTheCircle() {
-        let ordered: [Zone] = [.right, .topRight, .topLeft, .left, .bottomLeft, .bottomRight]
+        let ordered: [Zone] = [.right, .topRight, .top, .topLeft, .left, .bottomLeft, .bottom, .bottomRight]
         var total: CGFloat = 0
         for zone in ordered {
             let arc = zone.arc
@@ -165,7 +192,7 @@ final class ZoneMathTests: XCTestCase {
         for degree in stride(from: CGFloat(0), to: 360, by: 0.5) {
             let zone = Zone.forAngle(degrees: degree)
             let arc = zone.arc
-            // `right` is stored as 315...405, so compare against both the raw
+            // `right` is stored as 335...385, so compare against both the raw
             // angle and its +360 alias.
             let inRange = (degree >= arc.start && degree < arc.end)
                 || (degree + 360 >= arc.start && degree + 360 < arc.end)

@@ -50,23 +50,37 @@ enum ZoneMath {
 enum Zone: CaseIterable {
     case right
     case topRight
+    case top
     case topLeft
     case left
     case bottomLeft
+    case bottom
     case bottomRight
 
     /// Half-open arc `[start, end)` in normalized math degrees.
     ///
-    /// `right` is stored as 315...405 rather than -45...45 so that every zone
+    /// The widths are deliberately unequal, and they are the whole reason eight
+    /// zones fit where six did. A blind flick's accuracy plateaus somewhere
+    /// around ±20°, so the 90° `left` and `right` used to own was angle held for
+    /// no return — 50° still hits without looking, and the harvested degrees pay
+    /// for `top` and `bottom`. The diagonals keep 45° because a diagonal is the
+    /// hardest direction to estimate, and the vertical halves take 40° rather
+    /// than the leftovers because a vertical flick is an arm movement, not a
+    /// wrist one: a sloppy one lands in a quarter, which is a visibly wrong
+    /// snap rather than a no-op. Nothing drops below ±20°.
+    ///
+    /// `right` is stored as 335...385 rather than -25...25 so that every zone
     /// has `end > start`; the lookup and the HUD both rely on that ordering.
     var arc: (start: CGFloat, end: CGFloat) {
         switch self {
-        case .right:       return (315, 405)
-        case .topRight:    return (45, 90)
-        case .topLeft:     return (90, 135)
-        case .left:        return (135, 225)
-        case .bottomLeft:  return (225, 270)
-        case .bottomRight: return (270, 315)
+        case .right:       return (335, 385)
+        case .topRight:    return (25, 70)
+        case .top:         return (70, 110)
+        case .topLeft:     return (110, 155)
+        case .left:        return (155, 205)
+        case .bottomLeft:  return (205, 250)
+        case .bottom:      return (250, 290)
+        case .bottomRight: return (290, 335)
         }
     }
 
@@ -74,9 +88,11 @@ enum Zone: CaseIterable {
         switch self {
         case .right:       return "Right"
         case .topRight:    return "Top-Right"
+        case .top:         return "Top"
         case .topLeft:     return "Top-Left"
         case .left:        return "Left"
         case .bottomLeft:  return "Bottom-Left"
+        case .bottom:      return "Bottom"
         case .bottomRight: return "Bottom-Right"
         }
     }
@@ -86,9 +102,9 @@ enum Zone: CaseIterable {
         let angle = ZoneMath.normalizedDegrees(degrees)
 
         // `right` wraps across 0°, so it is tested as two half-open spans.
-        if angle >= 315 || angle < 45 { return .right }
+        if angle >= 335 || angle < 25 { return .right }
 
-        for zone in [Zone.topRight, .topLeft, .left, .bottomLeft, .bottomRight] {
+        for zone in [Zone.topRight, .top, .topLeft, .left, .bottomLeft, .bottom, .bottomRight] {
             let arc = zone.arc
             if angle >= arc.start && angle < arc.end { return zone }
         }
@@ -113,6 +129,10 @@ enum Zone: CaseIterable {
             return CGRect(x: midX, y: visibleFrame.minY, width: halfWidth, height: visibleFrame.height)
         case .left:
             return CGRect(x: visibleFrame.minX, y: visibleFrame.minY, width: halfWidth, height: visibleFrame.height)
+        case .top:
+            return CGRect(x: visibleFrame.minX, y: midY, width: visibleFrame.width, height: halfHeight)
+        case .bottom:
+            return CGRect(x: visibleFrame.minX, y: visibleFrame.minY, width: visibleFrame.width, height: halfHeight)
         case .topRight:
             return CGRect(x: midX, y: midY, width: halfWidth, height: halfHeight)
         case .topLeft:
