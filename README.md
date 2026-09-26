@@ -50,6 +50,21 @@ resolved by the half-open rule, so a perfect 135° flick snapped Left; that
 surprise is gone. Ranges are still half-open — a boundary angle belongs to the
 zone that starts there — and `DoweyTests` pins every boundary.
 
+### Windows in macOS full screen
+
+A window that is in macOS full screen — the green button, its own Space — also
+answers the gesture. It cannot be moved while it is up there: a full-screen
+window's position and size are not settable, so a snap that arrived while it
+was would be silently dropped. Dowey asks the window to leave full screen
+first, waits for the Space switch to finish and the window to stop moving, and
+only then places it. That is the one path where the snap is not instant; the
+wait is the system's animation, not a fixed delay, and it gives up after 1.5 s
+if the app takes the request and ignores it.
+
+Releasing inside the center circle does the same thing and then maximizes to
+the visible frame — so it trades macOS full screen for Dowey's, which keeps the
+menu bar, the Dock and the Space you were already on.
+
 ### Six zones, if you want them
 
 **Settings → Six zones only** puts the original table back: halves at 90°,
@@ -323,7 +338,7 @@ between gestures.
 | `GesturePreviewView.swift` | The live preview — real ring, real destination tile, real zone math, on a miniature desktop. |
 | `DoweyGlyph.swift` | The circle: menu bar template image and app icon artwork. |
 | `GlobalEventMonitor.swift` | The state machine — Idle → Armed → Tracking → Commit/Cancel — and every event monitor's lifecycle. |
-| `WindowEngine.swift` | Accessibility-API window manipulation; target-screen selection; Cocoa ↔ AX coordinate conversion. |
+| `WindowEngine.swift` | Accessibility-API window manipulation; target-screen selection; leaving macOS full screen before a snap; Cocoa ↔ AX coordinate conversion. |
 | `RadialHUDView.swift` | All six ring designs, built from `CAShapeLayer`s and driven by a `Style`. Also `OverlayWindow`, the shared borderless/click-through window used by both overlays. |
 | `PreviewOverlayView.swift` | Destination outline and flat tint. |
 | `ZoneMath.swift` | Pure geometry: angle from points, angle → zone, zone → rect, deadzone test. No AppKit state, fully unit-tested. |

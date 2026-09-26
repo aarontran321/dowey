@@ -218,9 +218,12 @@ final class GlobalEventMonitor {
         // paints on top of the window that just landed under it.
         teardown()
 
-        let result = WindowEngine.snap(target, at: NSEvent.mouseLocation)
-        if case .failure(let error) = result {
-            NSLog("Dowey: snap to \(target.displayName) failed — \(error.description)")
+        // Completes on a later run-loop turn only for a window in macOS full
+        // screen, which has to leave its Space before it can be placed.
+        WindowEngine.snap(target, at: NSEvent.mouseLocation) { result in
+            if case .failure(let error) = result {
+                NSLog("Dowey: snap to \(target.displayName) failed — \(error.description)")
+            }
         }
     }
 

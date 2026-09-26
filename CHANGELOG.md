@@ -6,6 +6,20 @@ the public shape — the gesture, the zone layouts, and the names and meanings
 of the settings — is stable: a breaking change to any of them takes a major
 bump.
 
+## [1.3.3] — 2026-09-23
+
+### Fixed
+- **The gesture did nothing to a window in macOS full screen.** A full-screen
+  window owns its own Space, and its position and size are not settable while
+  it is there — the snap was issued, the Accessibility API accepted nothing,
+  and the window sat where it was. Dowey now asks the window to leave full
+  screen, waits for the Space switch and the restore animation to settle (by
+  watching the window's own frame, not by guessing a delay), and places it
+  then. The destination is computed after the exit as well, so the window
+  lands in the desktop's visible frame rather than in the full-screen one.
+  Apps that take the request and stay full screen are given up on after 1.5 s
+  and logged.
+
 ## [1.3.2] — 2026-09-23
 
 ### Fixed
