@@ -21,6 +21,7 @@
 		3B000000000000000000012 /* SettingsWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A000000000000000000012 /* SettingsWindowController.swift */; };
 		3B000000000000000000013 /* GesturePreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A000000000000000000013 /* GesturePreviewView.swift */; };
 		3B000000000000000000014 /* DoweyGlyph.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A000000000000000000014 /* DoweyGlyph.swift */; };
+		3B000000000000000000016 /* GlobeShortcuts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A000000000000000000016 /* GlobeShortcuts.swift */; };
 		3B000000000000000000015 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3A000000000000000000015 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
@@ -51,6 +52,7 @@
 		3A000000000000000000012 /* SettingsWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsWindowController.swift; sourceTree = "<group>"; };
 		3A000000000000000000013 /* GesturePreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GesturePreviewView.swift; sourceTree = "<group>"; };
 		3A000000000000000000014 /* DoweyGlyph.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DoweyGlyph.swift; sourceTree = "<group>"; };
+		3A000000000000000000016 /* GlobeShortcuts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlobeShortcuts.swift; sourceTree = "<group>"; };
 		3A000000000000000000015 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -87,6 +89,7 @@
 				3A0000000000000000000001 /* main.swift */,
 				3A0000000000000000000002 /* AppDelegate.swift */,
 				3A0000000000000000000003 /* GlobalEventMonitor.swift */,
+				3A000000000000000000016 /* GlobeShortcuts.swift */,
 				3A0000000000000000000004 /* WindowEngine.swift */,
 				3A0000000000000000000005 /* RadialHUDView.swift */,
 				3A0000000000000000000006 /* PreviewOverlayView.swift */,
@@ -212,6 +215,7 @@
 				3B0000000000000000000001 /* main.swift in Sources */,
 				3B0000000000000000000002 /* AppDelegate.swift in Sources */,
 				3B0000000000000000000003 /* GlobalEventMonitor.swift in Sources */,
+				3B000000000000000000016 /* GlobeShortcuts.swift in Sources */,
 				3B0000000000000000000004 /* WindowEngine.swift in Sources */,
 				3B0000000000000000000005 /* RadialHUDView.swift in Sources */,
 				3B0000000000000000000006 /* PreviewOverlayView.swift in Sources */,
@@ -302,7 +306,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.3.3;
+				MARKETING_VERSION = 1.4.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.aaron.dowey;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -325,7 +329,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.3.3;
+				MARKETING_VERSION = 1.4.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.aaron.dowey;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -340,7 +344,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = 1.3.3;
+				MARKETING_VERSION = 1.4.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.aaron.dowey.tests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
@@ -355,7 +359,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = 1.3.3;
+				MARKETING_VERSION = 1.4.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.aaron.dowey.tests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;

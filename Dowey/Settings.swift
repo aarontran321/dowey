@@ -150,6 +150,71 @@ enum Tint: String, CaseIterable, Identifiable {
     }
 }
 
+// MARK: - Globe shortcuts
+
+/// The four keys that can be paired with Globe.
+enum ArrowKey: String, CaseIterable, Identifiable {
+    case up, left, right, down
+
+    var id: String { rawValue }
+
+    var symbol: String {
+        switch self {
+        case .up:    return "↑"
+        case .left:  return "←"
+        case .right: return "→"
+        case .down:  return "↓"
+        }
+    }
+
+    var name: String { rawValue.capitalized + " Arrow" }
+
+    /// What the key does out of the box. Down is left alone so Globe + Down
+    /// keeps meaning Page Down until someone asks for otherwise.
+    var defaultAction: ShortcutAction {
+        switch self {
+        case .up:    return .maximize
+        case .left:  return .left
+        case .right: return .right
+        case .down:  return .none
+        }
+    }
+}
+
+/// What a Globe + arrow press does. `none` hands the key back to the app, so
+/// an unassigned arrow behaves exactly as it would without Dowey.
+enum ShortcutAction: String, CaseIterable, Identifiable {
+    case none, maximize, left, right, top, bottom, topLeft, topRight, bottomLeft, bottomRight
+
+    var id: String { rawValue }
+
+    var target: SnapTarget? {
+        switch self {
+        case .none:        return nil
+        case .maximize:    return .maximize
+        case .left:        return .zone(.left)
+        case .right:       return .zone(.right)
+        case .top:         return .zone(.top)
+        case .bottom:      return .zone(.bottom)
+        case .topLeft:     return .zone(.topLeft)
+        case .topRight:    return .zone(.topRight)
+        case .bottomLeft:  return .zone(.bottomLeft)
+        case .bottomRight: return .zone(.bottomRight)
+        }
+    }
+
+    var name: String {
+        switch self {
+        case .none:     return "Nothing"
+        case .left:     return "Left Half"
+        case .right:    return "Right Half"
+        case .top:      return "Top Half"
+        case .bottom:   return "Bottom Half"
+        default:        return target?.displayName ?? rawValue
+        }
+    }
+}
+
 // MARK: - Store
 
 final class Settings: ObservableObject {
@@ -173,6 +238,10 @@ final class Settings: ObservableObject {
         static let previewUsesTint = "previewUsesTint"
         static let triggerDistance = "triggerDistance"
         static let sixZones = "sixZones"
+        static let globeShortcuts = "globeShortcuts"
+        /// Assigned actions, keyed by `ArrowKey.rawValue`. Only keys the user
+        /// has changed are stored; the rest read their default.
+        static let shortcutActions = "shortcutActions"
     }
 
     /// Slider bounds, kept next to the store so the settings window and any
@@ -233,6 +302,31 @@ final class Settings: ObservableObject {
         }
     }
 
+    /// Globe + arrow keys snap the focused window. Watched by the AppDelegate,
+    /// which installs or removes the event tap to match.
+    @Published var globeShortcutsEnabled: Bool { didSet { commit(globeShortcutsEnabled, Key.globeShortcuts) } }
+
+    @Published private var shortcutActions: [String: String] { didSet { commit(shortcutActions, Key.shortcutActions) } }
+
+    func shortcut(for key: ArrowKey) -> ShortcutAction {
+        shortcutActions[key.rawValue].flatMap(ShortcutAction.init(rawValue:)) ?? key.defaultAction
+    }
+
+    func setShortcut(_ action: ShortcutAction, for key: ArrowKey) {
+        shortcutActions[key.rawValue] = action.rawValue
+    }
+
+    var shortcutsAreDefault: Bool {
+        globeShortcutsEnabled && ArrowKey.allCases.allSatisfy { shortcut(for: $0) == $0.defaultAction }
+    }
+
+    /// Separate from `resetToDefaults`, which belongs to the appearance tab and
+    /// should not quietly rebind keys.
+    func resetShortcuts() {
+        globeShortcutsEnabled = true
+        shortcutActions = [:]
+    }
+
     // MARK: Init
 
     init(defaults: UserDefaults = .standard) {
@@ -251,6 +345,8 @@ final class Settings: ObservableObject {
         showPreview = defaults.object(forKey: Key.showPreview) as? Bool ?? d.showPreview
         previewUsesTint = defaults.object(forKey: Key.previewUsesTint) as? Bool ?? d.previewUsesTint
         sixZones = defaults.object(forKey: Key.sixZones) as? Bool ?? (d.zoneLayout == .six)
+        globeShortcutsEnabled = defaults.object(forKey: Key.globeShortcuts) as? Bool ?? true
+        shortcutActions = defaults.dictionary(forKey: Key.shortcutActions) as? [String: String] ?? [:]
 
         ZoneMath.deadzoneRadius = CGFloat(triggerDistance)
         ZoneMath.layout = sixZones ? .six : .eight

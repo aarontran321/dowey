@@ -4,7 +4,8 @@
 //
 //  Owns the gesture state machine. Observe-only NSEvent monitors — no
 //  CGEventTap — because the Globe key's system action is disabled by the user
-//  (see README), so nothing needs to be consumed.
+//  (see README), so nothing needs to be consumed. Globe + arrow shortcuts do
+//  need to consume, and live in GlobeShortcuts for that reason.
 //
 
 import AppKit
@@ -88,6 +89,9 @@ final class GlobalEventMonitor {
     /// at all — it asks the HID system directly. Runs only while armed.
     private var releaseWatchdog: Timer?
 
+    /// Hides the ring after a shortcut has lit it. Never set during a gesture.
+    private var flashTimer: Timer?
+
     private let hud = RadialHUDController()
     private let preview = PreviewOverlayController()
 
@@ -128,6 +132,8 @@ final class GlobalEventMonitor {
     }
 
     private func arm() {
+        flashTimer?.invalidate()
+        flashTimer = nil
         let origin = NSEvent.mouseLocation
         state = .armed(origin: origin)
 
@@ -227,12 +233,31 @@ final class GlobalEventMonitor {
         }
     }
 
+    /// A Globe + arrow shortcut has fired. The gesture steps aside — Globe is
+    /// down, so without this its release would maximize over the shortcut —
+    /// and the ring stays up just long enough to show which way the window
+    /// went. No destination outline: the window is already there.
+    func flash(_ target: SnapTarget) {
+        let origin = state.origin ?? NSEvent.mouseLocation
+        teardown()
+
+        hud.show(at: origin)
+        if case .zone(let zone) = target { hud.update(activeZone: zone) }
+
+        flashTimer = Timer.scheduledTimer(withTimeInterval: 0.7, repeats: false) { [weak self] _ in
+            self?.hud.hide()
+            self?.flashTimer = nil
+        }
+    }
+
     private func cancel() {
         guard state.isActive else { return }
         teardown()
     }
 
     private func teardown() {
+        flashTimer?.invalidate()
+        flashTimer = nil
         for monitor in gestureMonitors { monitor.stop() }
         gestureMonitors.removeAll()
         if let spaceChangeObserver {

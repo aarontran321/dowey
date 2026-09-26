@@ -8,6 +8,7 @@
 
 import AppKit
 import ApplicationServices
+import Combine
 import CoreGraphics
 
 struct PermissionStatus {
@@ -28,7 +29,9 @@ struct PermissionStatus {
 final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private let monitor = GlobalEventMonitor()
+    private let shortcuts = GlobeShortcuts()
     private var statusItem: NSStatusItem?
+    private var cancellables: Set<AnyCancellable> = []
 
     // MARK: - Lifecycle
 
@@ -38,6 +41,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // ZoneMath, before the first gesture can consult it.
         _ = Settings.shared
         monitor.start()
+        setUpShortcuts()
 
         let status = PermissionStatus.current()
         if !status.allGranted {
@@ -46,7 +50,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        shortcuts.stop()
         monitor.stop()
+    }
+
+    // MARK: - Shortcuts
+
+    private func setUpShortcuts() {
+        shortcuts.willSnap = { [weak self] target in self?.monitor.flash(target) }
+
+        Settings.shared.$globeShortcutsEnabled
+            .sink { [weak self] enabled in
+                enabled ? self?.shortcuts.start() : self?.shortcuts.stop()
+            }
+            .store(in: &cancellables)
+
+        // The tap cannot be installed without Accessibility. Coming back from
+        // System Settings reactivates Dowey, which is when a grant can have
+        // happened — try again then rather than on a timer.
+        NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)
+            .sink { [weak self] _ in
+                guard let self, Settings.shared.globeShortcutsEnabled, !self.shortcuts.isRunning else { return }
+                self.shortcuts.start()
+            }
+            .store(in: &cancellables)
     }
 
     /// Dowey has no Dock icon, so the only way to "open" an already-running copy

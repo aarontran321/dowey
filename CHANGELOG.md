@@ -6,6 +6,30 @@ the public shape — the gesture, the zone layouts, and the names and meanings
 of the settings — is stable: a breaking change to any of them takes a major
 bump.
 
+## [1.4.0] — 2026-09-26
+
+### Added
+- **Globe + arrow shortcuts.** Hold Globe and press ↑ to maximize, ← or → for
+  the left or right half. The window stays on the screen it is already on.
+  The keys are consumed before the frontmost app sees them, so Globe + arrow
+  no longer also scrolls, jumps to Home/End or pages the document under the
+  window. Modified presses (Globe + Shift + ←, and so on) still reach the app.
+- **A Shortcuts tab in Settings.** The window now has General and Shortcuts
+  tabs. Shortcuts has an on/off switch and a picker per arrow: Nothing,
+  Maximize, any half or any quarter. Down is set to Nothing by default. An
+  arrow set to Nothing is passed through untouched. Every choice in the menu
+  carries a miniature screen with its destination filled in, drawn from the
+  same rect the snap uses.
+- **The ring shows the shortcut.** Pressing a Globe + arrow shortcut lights
+  that direction on the ring — or the center, for Maximize — for 0.7 s, so the
+  keyboard and the gesture read as one thing.
+
+### Changed
+- Dowey now installs one CGEventTap for key-down and key-up while the
+  shortcuts are on. It is the only place Dowey sits in the keystroke path, and
+  the callback hands every snap off to the next run-loop turn so typing is
+  never held up by an Accessibility call. Turning the shortcuts off removes it.
+
 ## [1.3.3] — 2026-09-23
 
 ### Fixed

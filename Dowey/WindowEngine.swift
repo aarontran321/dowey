@@ -42,6 +42,17 @@ enum WindowEngine {
         screen(containing: point)?.visibleFrame
     }
 
+    /// Center of the frontmost app's focused window, in Cocoa screen space —
+    /// where a keyboard shortcut anchors its choice of screen.
+    static func focusedWindowCenter() -> CGPoint? {
+        guard AXIsProcessTrusted(),
+              case .success(let window) = focusedWindowOfFrontmostApp(),
+              let axFrame = frame(of: window) else { return nil }
+        // The flip is its own inverse, so it converts back just as well.
+        let frame = cocoaToAccessibility(axFrame)
+        return CGPoint(x: frame.midX, y: frame.midY)
+    }
+
     // MARK: - Public entry point
 
     /// Moves the frontmost app's focused window to `target`.

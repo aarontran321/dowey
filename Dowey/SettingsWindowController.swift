@@ -29,9 +29,37 @@ private final class SettingsWindow: NSWindow {
     }
 }
 
-final class SettingsWindowController: NSWindowController, NSWindowDelegate {
+/// Which tab the window is showing. Owned by the controller, because the
+/// toolbar that switches tabs is AppKit's and the pages are SwiftUI's.
+final class SettingsNavigation: ObservableObject {
+    @Published var tab: SettingsTab = .general
+}
+
+enum SettingsTab: String, CaseIterable {
+    case general, shortcuts
+
+    var title: String {
+        switch self {
+        case .general:   return "General"
+        case .shortcuts: return "Shortcuts"
+        }
+    }
+
+    var symbolName: String {
+        switch self {
+        case .general:   return "circle.circle"
+        case .shortcuts: return "globe"
+        }
+    }
+
+    var toolbarIdentifier: NSToolbarItem.Identifier { .init(rawValue) }
+}
+
+final class SettingsWindowController: NSWindowController, NSWindowDelegate, NSToolbarDelegate {
 
     static let shared = SettingsWindowController()
+
+    private let navigation = SettingsNavigation()
 
     private static let defaultContentSize = NSSize(width: 1060, height: 720)
 
@@ -94,7 +122,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
 
         // No material here: each column of SettingsView brings its own, so the
         // sidebar and the content pane read as two surfaces rather than one.
-        let host = NSHostingView(rootView: SettingsView(settings: .shared))
+        let host = NSHostingView(rootView: SettingsView(settings: .shared, navigation: navigation))
         // Without this the hosting view publishes its SwiftUI content size as
         // constraints on the window, and the window obeys them: the form's
         // natural height is over 1000 pt, which grew the window taller than a
@@ -102,6 +130,17 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         host.sizingOptions = []
 
         window.contentView = host
+
+        // The System Settings-style tab strip: icons over labels, in the
+        // titlebar, one selected at a time.
+        let toolbar = NSToolbar(identifier: "DoweySettingsTabs")
+        toolbar.delegate = self
+        toolbar.displayMode = .iconAndLabel
+        toolbar.allowsUserCustomization = false
+        toolbar.selectedItemIdentifier = navigation.tab.toolbarIdentifier
+        window.toolbar = toolbar
+        window.toolbarStyle = .preference
+        window.title = navigation.tab.title
         window.center()
         // Restores the size and position from the last visit, which is what
         // makes tearing the window down invisible to the user.
@@ -119,5 +158,37 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         window.delegate = self
 
         return window
+    }
+
+    // MARK: - Tabs
+
+    func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
+        SettingsTab.allCases.map(\.toolbarIdentifier)
+    }
+
+    func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
+        toolbarAllowedItemIdentifiers(toolbar)
+    }
+
+    func toolbarSelectableItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
+        toolbarAllowedItemIdentifiers(toolbar)
+    }
+
+    func toolbar(_ toolbar: NSToolbar,
+                 itemForItemIdentifier identifier: NSToolbarItem.Identifier,
+                 willBeInsertedIntoToolbar flag: Bool) -> NSToolbarItem? {
+        guard let tab = SettingsTab(rawValue: identifier.rawValue) else { return nil }
+        let item = NSToolbarItem(itemIdentifier: identifier)
+        item.label = tab.title
+        item.image = NSImage(systemSymbolName: tab.symbolName, accessibilityDescription: tab.title)
+        item.target = self
+        item.action = #selector(selectTab(_:))
+        return item
+    }
+
+    @objc private func selectTab(_ sender: NSToolbarItem) {
+        guard let tab = SettingsTab(rawValue: sender.itemIdentifier.rawValue) else { return }
+        navigation.tab = tab
+        window?.title = tab.title
     }
 }

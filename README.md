@@ -93,6 +93,8 @@ Two behaviors worth knowing:
 - **Deadzone re-entry.** Moving back inside the 20 pt radius returns the ring to its neutral state and dismisses the preview, so releasing there maximizes. The circle at the center of the ring *is* that target — it is drawn at exactly the 20 pt deadzone radius, and it lights up whenever releasing would maximize.
 - **Which screen.** On a multi-monitor setup, the target is whichever display the *cursor* is on when you release — not the one the window currently sits on. Rects are computed from `NSScreen.visibleFrame`, so the menu bar and Dock are already excluded.
 
+**Keyboard.** Hold 🌐 and press ↑ to maximize, ← / → for the left / right half. You can rebind each arrow (or turn the whole thing off) in Settings → Shortcuts. The arrow keys are swallowed, so the app underneath never sees them.
+
 Minimize is not implemented in v1. Zone angles and the trigger key are hardcoded; the deadzone radius is the **Trigger distance** setting.
 
 ---
@@ -137,7 +139,7 @@ Three things, in order. Steps 1 and 2 are required for Dowey to work at all.
 
 **System Settings → Keyboard → "Press 🌐 key to:" → Do Nothing.**
 
-Dowey only *observes* the Globe key; it never consumes the event. If macOS still owns that key, your Emoji picker or Input-source switcher will fire on every gesture. This step is the whole reason Dowey can use a plain `NSEvent` monitor instead of a `CGEventTap`.
+Dowey only *observes* the Globe key; it never consumes the event. If macOS still owns that key, your Emoji picker or Input-source switcher will fire on every gesture. This step is the whole reason the gesture can use a plain `NSEvent` monitor instead of a `CGEventTap`. (The Globe + arrow shortcuts do use a tap, because they have to keep the arrow key from reaching the app.)
 
 ### 2. Grant two permissions
 
@@ -262,6 +264,9 @@ The app spends its life in the first row: a menu-bar item, a `flagsChanged`
 monitor and nothing else. 0.00029% of one core is about 3 µs of CPU per second.
 A global `NSEvent` monitor registered only for `flagsChanged` is not woken by
 mouse movement, so idle cost does not depend on what the pointer is doing.
+Those figures predate 1.4.0's Globe + arrow shortcuts, which add a key-down /
+key-up event tap: it wakes once per keystroke, and turning the shortcuts off in
+Settings → Shortcuts removes it.
 
 **Opening Settings costs about 26 MB and closing it returns about 5.**  Dowey
 drops the window and its whole SwiftUI hierarchy on close, which is what those
@@ -321,7 +326,8 @@ many gestures — Activity Monitor's Memory column reads about **10 MB** if you
 have not opened Settings this launch, and about **31 MB** if you have.
 
 Why it costs nothing at rest: there is no timer anywhere in the codebase. While
-idle, exactly one `flagsChanged` monitor is installed and both overlay windows are
+idle, exactly one `flagsChanged` monitor (plus, with shortcuts on, one keyboard
+event tap) is installed and both overlay windows are
 ordered out of the window server. The mouse-move and Escape monitors are created
 on Globe key-down and removed on release or cancel, so no mouse handler runs
 between gestures.

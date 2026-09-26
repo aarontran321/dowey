@@ -2,7 +2,7 @@
 //  SettingsView.swift
 //  Dowey
 //
-//  The whole app surface, in two even columns: what it looks like on the left
+//  The General tab is the whole ring surface, in two even columns: what it looks like on the left
 //  — the live preview, the design gallery and the zone layout — and the knobs
 //  for whatever is selected on the right.
 //
@@ -25,9 +25,25 @@ struct SettingsView: View {
     }
 
     @ObservedObject var settings: Settings
+    @ObservedObject var navigation: SettingsNavigation
     @State private var permissions = PermissionStatus.current()
 
     var body: some View {
+        Group {
+            switch navigation.tab {
+            case .general:   general
+            case .shortcuts: ShortcutsView(settings: settings)
+            }
+        }
+        .tint(Color(nsColor: settings.tintColor))
+        // Event-driven, never polled: returning from System Settings reactivates
+        // Dowey, which is exactly when the answer can have changed.
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            permissions = .current()
+        }
+    }
+
+    private var general: some View {
         HStack(spacing: 0) {
             stage.frame(maxWidth: .infinity)
             Divider()
@@ -42,12 +58,6 @@ struct SettingsView: View {
                 VisualEffect(material: .sidebar).frame(maxWidth: .infinity)
             }
             .ignoresSafeArea()
-        }
-        .tint(Color(nsColor: settings.tintColor))
-        // Event-driven, never polled: returning from System Settings reactivates
-        // Dowey, which is exactly when the answer can have changed.
-        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
-            permissions = .current()
         }
     }
 
@@ -258,6 +268,119 @@ struct SettingsView: View {
     private func open(_ urlString: String) {
         guard let url = URL(string: urlString) else { return }
         NSWorkspace.shared.open(url)
+    }
+}
+
+// MARK: - Shortcuts tab
+
+/// Globe + arrow bindings. One narrow column centered in the window: four rows
+/// do not need the width the ring page uses.
+private struct ShortcutsView: View {
+
+    @ObservedObject var settings: Settings
+
+    var body: some View {
+        Form {
+            Section {
+                Toggle("Snap windows with 🌐 + arrow keys", isOn: $settings.globeShortcutsEnabled)
+            } footer: {
+                Text("Hold Globe and press an arrow to move the focused window on the screen it is already on. The keys are taken before the app sees them, so they will not scroll, jump to the end of a line, or page through what you are working on. Keys set to Nothing reach the app as usual.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Section("Shortcuts") {
+                ForEach(ArrowKey.allCases) { key in
+                    Picker(selection: Binding(get: { settings.shortcut(for: key) },
+                                              set: { settings.setShortcut($0, for: key) })) {
+                        ForEach(ShortcutAction.allCases) { action in
+                            Label {
+                                Text(action.name)
+                            } icon: {
+                                Image(nsImage: action.thumbnail)
+                            }
+                            .tag(action)
+                            if action == .none || action == .maximize || action == .bottom {
+                                Divider()
+                            }
+                        }
+                    } label: {
+                        HStack(spacing: 4) {
+                            KeyCap("🌐")
+                            Text("+").foregroundStyle(.tertiary)
+                            KeyCap(key.symbol)
+                        }
+                        .accessibilityLabel("Globe plus \(key.name)")
+                    }
+                }
+            }
+            .disabled(!settings.globeShortcutsEnabled)
+
+            Section {
+                HStack {
+                    Button("Restore Defaults") { settings.resetShortcuts() }
+                        .disabled(settings.shortcutsAreDefault)
+                    Spacer()
+                }
+            }
+        }
+        .formStyle(.grouped)
+        .scrollContentBackground(.hidden)
+        .frame(maxWidth: 560)
+        .frame(maxWidth: .infinity)
+        .background {
+            VisualEffect(material: .contentBackground).ignoresSafeArea()
+        }
+    }
+}
+
+extension ShortcutAction {
+
+    /// A miniature screen with the destination filled in, so the menu shows
+    /// where the window goes rather than only naming it. Drawn from the same
+    /// `SnapTarget.rect` the snap uses, so it cannot disagree with the result.
+    /// Template, so menus tint it for light and dark.
+    var thumbnail: NSImage { Self.thumbnails[self]! }
+
+    private static let thumbnails: [ShortcutAction: NSImage] = Dictionary(
+        uniqueKeysWithValues: allCases.map { ($0, $0.drawThumbnail()) })
+
+    private func drawThumbnail() -> NSImage {
+        let image = NSImage(size: NSSize(width: 24, height: 16), flipped: false) { bounds in
+            let screen = bounds.insetBy(dx: 1.5, dy: 1.5)
+            NSColor.black.set()
+
+            let outline = NSBezierPath(roundedRect: screen, xRadius: 2.5, yRadius: 2.5)
+            outline.lineWidth = 1
+            outline.stroke()
+
+            if let target {
+                let rect = target.rect(in: screen.insetBy(dx: 2, dy: 2))
+                NSBezierPath(roundedRect: rect.insetBy(dx: 0.5, dy: 0.5), xRadius: 1, yRadius: 1).fill()
+            }
+            return true
+        }
+        image.isTemplate = true
+        return image
+    }
+}
+
+private struct KeyCap: View {
+    let label: String
+
+    init(_ label: String) { self.label = label }
+
+    var body: some View {
+        Text(label)
+            .font(.system(size: 12, weight: .medium))
+            .frame(minWidth: 22, minHeight: 20)
+            .background(Color.primary.opacity(0.07),
+                        in: RoundedRectangle(cornerRadius: 5, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 5, style: .continuous)
+                    .strokeBorder(Color.primary.opacity(0.15), lineWidth: 0.5)
+            }
     }
 }
 
