@@ -102,7 +102,11 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate, NSTo
                                     backing: .buffered,
                                     defer: false)
         window.title = "Dowey"
-        window.titlebarAppearsTransparent = true
+        // The titlebar keeps its own material. Both columns scroll, and a
+        // transparent titlebar let their content slide straight under the tab
+        // strip with nothing between them; with the material it passes under
+        // frosted glass instead, the way every system settings window does.
+        window.titlebarAppearsTransparent = false
         window.isMovableByWindowBackground = true
         // The live preview tracks the pointer, and mouse-moved events are only
         // delivered to a window that asks for them.

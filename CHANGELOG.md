@@ -6,6 +6,14 @@ the public shape — the gesture, the zone layouts, and the names and meanings
 of the settings — is stable: a breaking change to any of them takes a major
 bump.
 
+## [Unreleased]
+
+### Fixed
+- **Scrolling in Settings ran content under the tabs.** The titlebar was fully
+  transparent, so the preview and the controls slid straight behind the
+  General and Shortcuts tabs and the window title. The tab strip now has its
+  own material: content scrolls under it and stops at its edge.
+
 ## [1.4.1] — 2026-11-12
 
 ### Changed
