@@ -6,6 +6,16 @@ the public shape — the gesture, the zone layouts, and the names and meanings
 of the settings — is stable: a breaking change to any of them takes a major
 bump.
 
+## [1.4.1] — 2026-11-12
+
+### Changed
+- **Six zones is the default again.** A fresh install starts on the original
+  ring — left and right halves at 90°, quarters at 45°. The Settings switch is
+  now **Eight zones** and turns on Top and Bottom; it replaces "Six zones
+  only", which meant the same thing inverted. A choice made under the old
+  switch is carried over, so anyone who had picked a layout keeps it. Anyone
+  who never touched the switch moves from eight zones to six.
+
 ## [1.4.0] — 2026-09-26
 
 ### Added

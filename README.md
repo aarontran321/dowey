@@ -2,7 +2,7 @@
 
 A tiny, native macOS window snapper. Hold the **Globe (🌐 / fn)** key, flick the mouse in a direction, release. The window snaps.
 
-- Eight directional zones (four halves + four quarters), selected by mouse *direction*, not position — or six, if you prefer the original ring.
+- Six directional zones (left/right halves + four quarters), selected by mouse *direction*, not position — or eight, with Top and Bottom halves, if you switch them on.
 - Release without moving → maximize to the visible screen area.
 - Escape → cancel, nothing moves.
 - Six ring designs, each with its own parameter, chosen from a gallery next to a live preview. Nothing to save; every control commits as you touch it.
@@ -65,12 +65,13 @@ Releasing inside the center circle does the same thing and then maximizes to
 the visible frame — so it trades macOS full screen for Dowey's, which keeps the
 menu bar, the Dock and the Space you were already on.
 
-### Six zones, if you want them
+### Six zones by default, eight if you want them
 
-**Settings → Six zones only** puts the original table back: halves at 90°,
-quarters at 45°, no Top or Bottom. It exists because the eight-zone table buys
-those two zones by narrowing everything else — if you never flick vertically,
-you are paying for zones you do not want with tolerance on the ones you do.
+Dowey starts with the original six-zone table: halves at 90°, quarters at 45°,
+no Top or Bottom. **Settings → Eight zones** adds Top and Bottom halves. It is
+off by default because the eight-zone table buys those two zones by narrowing
+everything else — if you never flick vertically, you would be paying for zones
+you do not want with tolerance on the ones you do.
 
 | Zone | Six-zone range | Eight-zone range |
 |---|---|---|

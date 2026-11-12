@@ -103,12 +103,12 @@ struct SettingsView: View {
                 .padding(.top, 24)
                 .padding(.bottom, 16)
 
-            Toggle("Six zones only", isOn: $settings.sixZones)
+            Toggle("Eight zones", isOn: $settings.eightZones)
                 .toggleStyle(.switch)
 
-            Text(settings.sixZones
-                 ? "Halves and quarters, the original ring. Left and Right take a generous 90° each."
-                 : "Adds Top and Bottom. Left and Right narrow to 50° to make room, and the quarters to 45°.")
+            Text(settings.eightZones
+                 ? "Adds Top and Bottom. Left and Right narrow to 50° to make room, and the quarters to 45°."
+                 : "Halves and quarters, the original ring. Left and Right take a generous 90° each.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)

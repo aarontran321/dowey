@@ -50,7 +50,7 @@ struct Style: Equatable {
                                       previewCornerRadius: 10,
                                       previewUsesTint: false,
                                       triggerDistance: ZoneMath.defaultDeadzoneRadius,
-                                      zoneLayout: .eight)
+                                      zoneLayout: .six)
 
     /// Stroke width of a lit segment. Derived rather than stored so the two
     /// widths can never drift apart.
@@ -237,7 +237,10 @@ final class Settings: ObservableObject {
         static let previewCornerRadius = "previewCornerRadius"
         static let previewUsesTint = "previewUsesTint"
         static let triggerDistance = "triggerDistance"
-        static let sixZones = "sixZones"
+        static let eightZones = "eightZones"
+        /// Pre-1.5 name for the same switch, stored inverted. Read once on
+        /// launch so a choice made under the old name survives the rename.
+        static let legacySixZones = "sixZones"
         static let globeShortcuts = "globeShortcuts"
         /// Assigned actions, keyed by `ArrowKey.rawValue`. Only keys the user
         /// has changed are stored; the rest read their default.
@@ -282,13 +285,13 @@ final class Settings: ObservableObject {
     @Published var previewCornerRadius: Double { didSet { commit(previewCornerRadius, Key.previewCornerRadius) } }
     @Published var previewUsesTint: Bool { didSet { commit(previewUsesTint, Key.previewUsesTint) } }
 
-    /// Drop Top and Bottom and go back to the original six-zone ring. Pushed
-    /// into ZoneMath for the same reason as `triggerDistance`: the geometry
-    /// layer stays free of UserDefaults.
-    @Published var sixZones: Bool {
+    /// Add Top and Bottom to the default six-zone ring. Pushed into ZoneMath
+    /// for the same reason as `triggerDistance`: the geometry layer stays free
+    /// of UserDefaults.
+    @Published var eightZones: Bool {
         didSet {
-            ZoneMath.layout = sixZones ? .six : .eight
-            commit(sixZones, Key.sixZones)
+            ZoneMath.layout = eightZones ? .eight : .six
+            commit(eightZones, Key.eightZones)
         }
     }
 
@@ -344,12 +347,18 @@ final class Settings: ObservableObject {
         showRing = defaults.object(forKey: Key.showRing) as? Bool ?? d.showRing
         showPreview = defaults.object(forKey: Key.showPreview) as? Bool ?? d.showPreview
         previewUsesTint = defaults.object(forKey: Key.previewUsesTint) as? Bool ?? d.previewUsesTint
-        sixZones = defaults.object(forKey: Key.sixZones) as? Bool ?? (d.zoneLayout == .six)
+        if let stored = defaults.object(forKey: Key.eightZones) as? Bool {
+            eightZones = stored
+        } else if let legacySix = defaults.object(forKey: Key.legacySixZones) as? Bool {
+            eightZones = !legacySix
+        } else {
+            eightZones = (d.zoneLayout == .eight)
+        }
         globeShortcutsEnabled = defaults.object(forKey: Key.globeShortcuts) as? Bool ?? true
         shortcutActions = defaults.dictionary(forKey: Key.shortcutActions) as? [String: String] ?? [:]
 
         ZoneMath.deadzoneRadius = CGFloat(triggerDistance)
-        ZoneMath.layout = sixZones ? .six : .eight
+        ZoneMath.layout = eightZones ? .eight : .six
     }
 
     /// Missing keys fall back to the default; out-of-range ones are clamped, so
@@ -378,7 +387,7 @@ final class Settings: ObservableObject {
                    previewCornerRadius: CGFloat(previewCornerRadius),
                    previewUsesTint: previewUsesTint,
                    triggerDistance: CGFloat(triggerDistance),
-                   zoneLayout: sixZones ? .six : .eight)
+                   zoneLayout: eightZones ? .eight : .six)
     }
 
     /// The detail value a design is tuned to, whether or not it is selected.
@@ -418,7 +427,7 @@ final class Settings: ObservableObject {
         previewCornerRadius = Double(d.previewCornerRadius)
         previewUsesTint = d.previewUsesTint
         triggerDistance = Double(d.triggerDistance)
-        sixZones = (d.zoneLayout == .six)
+        eightZones = (d.zoneLayout == .eight)
     }
 
     var isDefault: Bool { style == .default && selectedTint == .system && details.isEmpty }

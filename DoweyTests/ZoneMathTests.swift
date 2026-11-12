@@ -229,7 +229,7 @@ final class ZoneMathTests: XCTestCase {
 
     // MARK: - Six-zone layout
 
-    /// The original table, kept reachable by the "Six zones only" setting.
+    /// The original table, and the default layout ("Eight zones" switched off).
     func testSixZoneLayoutRestoresTheOriginalBoundaries() {
         ZoneMath.layout = .six
 

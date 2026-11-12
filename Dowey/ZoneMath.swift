@@ -21,8 +21,8 @@ enum ZoneMath {
     static var deadzoneRadius: CGFloat = defaultDeadzoneRadius
 
     /// Which set of zones the ring offers. Written from exactly one place —
-    /// `Settings.sixZones` — for the same reason as `deadzoneRadius`.
-    static var layout: ZoneLayout = .eight
+    /// `Settings.eightZones` — for the same reason as `deadzoneRadius`.
+    static var layout: ZoneLayout = .six
 
     /// Squared-distance comparison keeps the hot path (every mouse-moved
     /// event while armed) free of a sqrt.
@@ -53,9 +53,10 @@ enum ZoneMath {
 
 /// How many directions the ring offers.
 ///
-/// `six` is Dowey's original layout, kept because the eight-zone table buys Top
-/// and Bottom by narrowing everything else: a user who never flicks vertically
-/// is paying for zones they do not want with tolerance on the ones they do.
+/// `six` is Dowey's original layout and the default: the eight-zone table buys
+/// Top and Bottom by narrowing everything else, so a user who never flicks
+/// vertically would pay for zones they do not want with tolerance on the ones
+/// they do. `eight` is opt-in from Settings.
 enum ZoneLayout: String, CaseIterable {
     case eight, six
 
