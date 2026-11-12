@@ -6,7 +6,7 @@ the public shape — the gesture, the zone layouts, and the names and meanings
 of the settings — is stable: a breaking change to any of them takes a major
 bump.
 
-## [Unreleased]
+## [1.4.2] — 2026-11-12
 
 ### Fixed
 - **Scrolling in Settings ran content under the tabs.** The titlebar was fully
