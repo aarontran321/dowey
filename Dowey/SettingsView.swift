@@ -36,6 +36,7 @@ struct SettingsView: View {
             }
         }
         .tint(Color(nsColor: settings.tintColor))
+        .environment(\.doweyTint, Color(nsColor: settings.tintColor))
         // Event-driven, never polled: returning from System Settings reactivates
         // Dowey, which is exactly when the answer can have changed.
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
@@ -55,7 +56,7 @@ struct SettingsView: View {
         .background(alignment: .leading) {
             HStack(spacing: 0) {
                 VisualEffect(material: .contentBackground).frame(maxWidth: .infinity)
-                VisualEffect(material: .sidebar).frame(maxWidth: .infinity)
+                ControlsCanvas().frame(maxWidth: .infinity)
             }
             .ignoresSafeArea()
         }
@@ -83,11 +84,9 @@ struct SettingsView: View {
                 .foregroundStyle(.tertiary)
                 .padding(.top, 8)
 
-            Text("RING DESIGN")
-                .font(.system(size: 10, weight: .semibold))
-                .foregroundStyle(.tertiary)
+            SectionHeader("Ring design")
                 .padding(.top, 28)
-                .padding(.bottom, 12)
+                .padding(.bottom, 4)
 
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 14), count: 3), spacing: 18) {
                 ForEach(RingDesign.allCases) { design in
@@ -99,20 +98,17 @@ struct SettingsView: View {
                 }
             }
 
-            Divider()
-                .padding(.top, 24)
-                .padding(.bottom, 16)
+            SectionHeader("Zones")
+                .padding(.top, 28)
 
-            Toggle("Eight zones", isOn: $settings.eightZones)
-                .toggleStyle(.switch)
+            Panel {
+                Toggle("Eight zones", isOn: $settings.eightZones)
+                    .toggleStyle(.dowey)
+            }
 
-            Text(settings.eightZones
+            PanelFootnote(settings.eightZones
                  ? "Adds Top and Bottom. Left and Right narrow to 50° to make room, and the quarters to 45°."
                  : "Halves and quarters, the original ring. Left and Right take a generous 90° each.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-                .padding(.top, 6)
 
             Spacer(minLength: 0)
         }
@@ -122,131 +118,121 @@ struct SettingsView: View {
     // MARK: - Right: the knobs
 
     private var form: some View {
-        Form {
-            Section {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Color")
-                    swatches
+        ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+                SectionHeader(settings.design.name)
+                Panel {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("Color").font(.system(size: 13))
+                        swatches
+                    }
+                    .padding(.vertical, 12)
+                    PanelDivider()
+                    SliderRow(title: "Size", value: $settings.ringRadius,
+                              range: Settings.Range.ringRadius, low: "Small", high: "Large")
+                    PanelDivider()
+                    SliderRow(title: "Thickness", value: $settings.ringThickness,
+                              range: Settings.Range.ringThickness, low: "Thin", high: "Thick")
+                    PanelDivider()
+                    SliderRow(title: settings.design.detail.label,
+                              value: Binding(get: { settings.detail }, set: { settings.detail = $0 }),
+                              range: settings.design.detail.range, low: "Less", high: "More")
+                    PanelDivider()
+                    Toggle("Show at the pointer", isOn: $settings.showRing)
+                        .toggleStyle(.dowey)
+                }
+                PanelFootnote(settings.design.summary)
+
+                SectionHeader("Destination").padding(.top, 28)
+                Panel {
+                    Toggle("Highlight the destination", isOn: $settings.showPreview)
+                        .toggleStyle(.dowey)
+                    PanelDivider()
+                    Group {
+                        SliderRow(title: "Opacity", value: $settings.previewOpacity,
+                                  range: Settings.Range.previewOpacity, low: "Clear", high: "Solid")
+                        PanelDivider()
+                        SliderRow(title: "Corners", value: $settings.previewCornerRadius,
+                                  range: Settings.Range.previewCornerRadius, low: "Square", high: "Round")
+                        PanelDivider()
+                        Toggle("Use the ring color", isOn: $settings.previewUsesTint)
+                            .toggleStyle(.dowey)
+                    }
+                    .disabled(!settings.showPreview)
                 }
 
-                slider("Size", value: $settings.ringRadius,
-                       range: Settings.Range.ringRadius, low: "Small", high: "Large")
+                SectionHeader("Gesture").padding(.top, 28)
+                Panel {
+                    SliderRow(title: "Trigger distance", value: $settings.triggerDistance,
+                              range: Settings.Range.triggerDistance, low: "Short", high: "Long")
+                }
+                PanelFootnote("How far the pointer travels before Dowey picks a direction. Release inside this distance to maximize.")
 
-                slider("Thickness", value: $settings.ringThickness,
-                       range: Settings.Range.ringThickness, low: "Thin", high: "Thick")
+                SectionHeader("General").padding(.top, 28)
+                Panel {
+                    Toggle("Open at Login", isOn: Binding(get: { settings.opensAtLogin },
+                                                          set: { settings.opensAtLogin = $0 }))
+                        .toggleStyle(.dowey)
+                    PanelDivider()
+                    permissionRow("Accessibility", granted: permissions.accessibility,
+                                  action: openAccessibilitySettings)
+                    PanelDivider()
+                    permissionRow("Input Monitoring", granted: permissions.inputMonitoring,
+                                  action: openInputMonitoringSettings)
+                }
 
-                slider(settings.design.detail.label,
-                       value: Binding(get: { settings.detail }, set: { settings.detail = $0 }),
-                       range: settings.design.detail.range, low: "Less", high: "More")
-
-                Toggle("Show at the pointer", isOn: $settings.showRing)
-            } header: {
-                Text(settings.design.name)
-            } footer: {
-                Text(settings.design.summary)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-            }
-
-            Section("Destination") {
-                Toggle("Highlight the destination", isOn: $settings.showPreview)
-
-                slider("Opacity", value: $settings.previewOpacity,
-                       range: Settings.Range.previewOpacity, low: "Clear", high: "Solid")
-                    .disabled(!settings.showPreview)
-
-                slider("Corners", value: $settings.previewCornerRadius,
-                       range: Settings.Range.previewCornerRadius, low: "Square", high: "Round")
-                    .disabled(!settings.showPreview)
-
-                Toggle("Use the ring color", isOn: $settings.previewUsesTint)
-                    .disabled(!settings.showPreview)
-            }
-
-            Section {
-                slider("Trigger distance", value: $settings.triggerDistance,
-                       range: Settings.Range.triggerDistance, low: "Short", high: "Long")
-            } header: {
-                Text("Gesture")
-            } footer: {
-                Text("How far the pointer travels before Dowey picks a direction. Release inside this distance to maximize.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-            }
-
-            Section("General") {
-                Toggle("Open at Login", isOn: Binding(get: { settings.opensAtLogin },
-                                                      set: { settings.opensAtLogin = $0 }))
-
-                permissionRow("Accessibility", granted: permissions.accessibility,
-                              action: openAccessibilitySettings)
-                permissionRow("Input Monitoring", granted: permissions.inputMonitoring,
-                              action: openInputMonitoringSettings)
-            }
-
-            Section {
                 HStack {
                     Button("Restore Defaults") { settings.resetToDefaults() }
+                        .buttonStyle(DoweyButtonStyle())
                         .disabled(settings.isDefault)
                     Spacer()
                     Text(versionString)
-                        .font(.footnote)
+                        .font(.system(size: 11))
                         .foregroundStyle(.tertiary)
                 }
+                .padding(.top, 24)
+                .padding(.horizontal, 4)
             }
+            .padding(.horizontal, 28)
+            .padding(.vertical, 24)
         }
-        .formStyle(.grouped)
-        .scrollContentBackground(.hidden) // lets the window's material show through
     }
 
     // MARK: - Pieces
 
     private var swatches: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 2) {
             ForEach(Tint.allCases) { tint in
-                Swatch(color: Color(nsColor: tint.color),
-                       isSelected: settings.selectedTint == tint)
+                let color = Color(nsColor: tint.color)
+                DoweySwatch(fill: AnyShapeStyle(color), ringColor: color,
+                            isSelected: settings.selectedTint == tint)
                     .onTapGesture { settings.setTint(tint) }
                     .help(tint.name)
+                    .accessibilityAddTraits(.isButton)
+                    .accessibilityLabel(tint.name)
             }
 
-            Divider().frame(height: 18)
+            Rectangle()
+                .fill(DoweyPalette.hairline)
+                .frame(width: 1, height: 18)
+                .padding(.horizontal, 6)
 
-            ColorPicker("Custom Color",
-                        selection: Binding(get: { Color(nsColor: settings.tintColor) },
-                                           set: { settings.setCustomTint(NSColor($0)) }),
-                        supportsOpacity: false)
-                .labelsHidden()
-                .frame(width: 44)
+            CustomColorSwatch(current: settings.tintColor,
+                              isSelected: settings.selectedTint == nil,
+                              onChange: { settings.setCustomTint($0) })
                 .help("Custom Color")
         }
     }
 
-    /// Title above the track rather than beside it: the inspector is 340 pt
-    /// wide, and a label-plus-track row would leave the track too short to aim
-    /// with. The end labels are plain text rather than the slider's own value
-    /// labels, which pick up the tint and would turn every row into colored type.
-    private func slider(_ title: String, value: Binding<Double>,
-                        range: ClosedRange<Double>, low: String, high: String) -> some View {
-        VStack(alignment: .leading, spacing: 5) {
-            Text(title)
-            HStack(spacing: 8) {
-                Text(low)
-                Slider(value: value, in: range)
-                Text(high)
-            }
-            .font(.caption)
-            .foregroundStyle(.secondary)
-        }
-    }
-
     private func permissionRow(_ title: String, granted: Bool, action: @escaping () -> Void) -> some View {
-        LabeledContent(title) {
-            HStack(spacing: 8) {
+        ControlRow(title: title) {
+            HStack(spacing: 10) {
                 Text(granted ? "Granted" : "Not granted")
-                    .foregroundStyle(granted ? .secondary : Color(nsColor: .systemOrange))
+                    .font(.system(size: 12))
+                    .foregroundStyle(granted ? Color.secondary : Color(nsColor: .systemOrange))
                 if !granted {
                     Button("Open…", action: action)
+                        .buttonStyle(DoweyButtonStyle(prominent: true))
                 }
             }
         }
@@ -280,58 +266,80 @@ private struct ShortcutsView: View {
     @ObservedObject var settings: Settings
 
     var body: some View {
-        Form {
-            Section {
-                Toggle("Snap windows with 🌐 + arrow keys", isOn: $settings.globeShortcutsEnabled)
-            } footer: {
-                Text("Hold Globe and press an arrow to move the focused window on the screen it is already on. The keys are taken before the app sees them, so they will not scroll, jump to the end of a line, or page through what you are working on. Keys set to Nothing reach the app as usual.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
+        ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+                SectionHeader("Keyboard")
+                Panel {
+                    Toggle("Snap windows with 🌐 + arrow keys", isOn: $settings.globeShortcutsEnabled)
+                        .toggleStyle(.dowey)
+                }
+                PanelFootnote("Hold Globe and press an arrow to move the focused window on the screen it is already on. The keys are taken before the app sees them, so they will not scroll, jump to the end of a line, or page through what you are working on. Keys set to Nothing reach the app as usual.")
 
-            Section("Shortcuts") {
-                ForEach(ArrowKey.allCases) { key in
-                    Picker(selection: Binding(get: { settings.shortcut(for: key) },
-                                              set: { settings.setShortcut($0, for: key) })) {
-                        ForEach(ShortcutAction.allCases) { action in
-                            Label {
-                                Text(action.name)
-                            } icon: {
-                                Image(nsImage: action.thumbnail)
-                            }
-                            .tag(action)
-                            if action == .none || action == .maximize || action == .bottom {
-                                Divider()
-                            }
-                        }
-                    } label: {
-                        HStack(spacing: 4) {
-                            KeyCap("🌐")
-                            Text("+").foregroundStyle(.tertiary)
-                            KeyCap(key.symbol)
-                        }
-                        .accessibilityLabel("Globe plus \(key.name)")
+                SectionHeader("Shortcuts").padding(.top, 28)
+                Panel {
+                    ForEach(Array(ArrowKey.allCases.enumerated()), id: \.element) { index, key in
+                        if index > 0 { PanelDivider() }
+                        row(for: key)
                     }
                 }
-            }
-            .disabled(!settings.globeShortcutsEnabled)
+                .disabled(!settings.globeShortcutsEnabled)
+                .opacity(settings.globeShortcutsEnabled ? 1 : 0.45)
 
-            Section {
                 HStack {
                     Button("Restore Defaults") { settings.resetShortcuts() }
+                        .buttonStyle(DoweyButtonStyle())
                         .disabled(settings.shortcutsAreDefault)
                     Spacer()
                 }
+                .padding(.top, 24)
+                .padding(.horizontal, 4)
             }
+            .padding(.horizontal, 28)
+            .padding(.vertical, 24)
+            .frame(maxWidth: 560)
+            .frame(maxWidth: .infinity)
         }
-        .formStyle(.grouped)
-        .scrollContentBackground(.hidden)
-        .frame(maxWidth: 560)
-        .frame(maxWidth: .infinity)
         .background {
-            VisualEffect(material: .contentBackground).ignoresSafeArea()
+            ZStack {
+                VisualEffect(material: .contentBackground)
+                ControlsCanvas(material: nil)
+            }
+            .ignoresSafeArea()
         }
+    }
+
+    private func row(for key: ArrowKey) -> some View {
+        HStack(spacing: 12) {
+            HStack(spacing: 5) {
+                KeyCap("🌐")
+                Text("+").font(.system(size: 11)).foregroundStyle(.tertiary)
+                KeyCap(key.symbol)
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Globe plus \(key.name)")
+
+            Spacer(minLength: 8)
+
+            Picker("Globe plus \(key.name)",
+                   selection: Binding(get: { settings.shortcut(for: key) },
+                                      set: { settings.setShortcut($0, for: key) })) {
+                ForEach(ShortcutAction.allCases) { action in
+                    Label {
+                        Text(action.name)
+                    } icon: {
+                        Image(nsImage: action.thumbnail)
+                    }
+                    .tag(action)
+                    if action == .none || action == .maximize || action == .bottom {
+                        Divider()
+                    }
+                }
+            }
+            .labelsHidden()
+            .pickerStyle(.menu)
+            .fixedSize()
+        }
+        .frame(minHeight: 48)
     }
 }
 
@@ -374,34 +382,17 @@ private struct KeyCap: View {
     var body: some View {
         Text(label)
             .font(.system(size: 12, weight: .medium))
-            .frame(minWidth: 22, minHeight: 20)
-            .background(Color.primary.opacity(0.07),
-                        in: RoundedRectangle(cornerRadius: 5, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: 5, style: .continuous)
-                    .strokeBorder(Color.primary.opacity(0.15), lineWidth: 0.5)
+            .frame(minWidth: 26, minHeight: 24)
+            .background {
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .fill(DoweyPalette.fieldFill)
+                    .shadow(color: DoweyPalette.panelShadow, radius: 1, y: 1)
             }
-    }
-}
-
-// MARK: - Swatch
-
-private struct Swatch: View {
-    let color: Color
-    let isSelected: Bool
-
-    var body: some View {
-        Circle()
-            .fill(color)
-            .frame(width: 16, height: 16)
-            .overlay(Circle().strokeBorder(.black.opacity(0.12), lineWidth: 0.5))
-            .padding(2.5)
             .overlay {
-                // The selection ring sits outside the swatch, the way the accent
-                // color picker in System Settings marks its choice.
-                Circle().strokeBorder(Color.primary.opacity(isSelected ? 0.55 : 0), lineWidth: 1.5)
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .strokeBorder(LinearGradient(colors: [DoweyPalette.panelEdgeTop, DoweyPalette.hairline],
+                                                 startPoint: .top, endPoint: .bottom), lineWidth: 1)
             }
-            .contentShape(Circle())
     }
 }
 
@@ -415,18 +406,27 @@ private struct DesignCell: View {
     let name: String
     let isSelected: Bool
 
+    @Environment(\.doweyTint) private var tint
+    @State private var isHovering = false
+
     var body: some View {
         VStack(spacing: 6) {
             RingThumbnail(style: style)
                 .frame(height: 104)
                 .frame(maxWidth: .infinity)
-                .background(Color.primary.opacity(0.06))
-                .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+                .background(DoweyPalette.panel)
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                 .overlay {
-                    RoundedRectangle(cornerRadius: 7, style: .continuous)
-                        .strokeBorder(isSelected ? Color.accentColor : Color.primary.opacity(0.10),
-                                      lineWidth: isSelected ? 2.5 : 1)
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .strokeBorder(isSelected
+                                      ? AnyShapeStyle(tint)
+                                      : AnyShapeStyle(LinearGradient(colors: [DoweyPalette.panelEdgeTop.opacity(isHovering ? 1.6 : 1),
+                                                                              DoweyPalette.panelEdgeBottom],
+                                                                     startPoint: .top, endPoint: .bottom)),
+                                      lineWidth: isSelected ? 2 : 1)
                 }
+                .shadow(color: DoweyPalette.panelShadow, radius: 6, y: 3)
+                .onHover { isHovering = $0 }
 
             Text(name)
                 .font(.caption)
@@ -483,6 +483,21 @@ private struct GesturePreview: NSViewRepresentable {
 
     func updateNSView(_ view: GesturePreviewView, context: Context) {
         view.apply(style)
+    }
+}
+
+// MARK: - Controls canvas
+
+/// The controls column's background: the window material, deepened to a dark
+/// grey so the panels have something to sit on.
+private struct ControlsCanvas: View {
+    var material: NSVisualEffectView.Material? = .sidebar
+
+    var body: some View {
+        ZStack {
+            if let material { VisualEffect(material: material) }
+            DoweyPalette.canvas
+        }
     }
 }
 

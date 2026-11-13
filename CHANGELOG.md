@@ -6,6 +6,19 @@ the public shape — the gesture, the zone layouts, and the names and meanings
 of the settings — is stable: a breaking change to any of them takes a major
 bump.
 
+## [Unreleased]
+
+### Changed
+- **Settings has its own look.** The stock grouped form is gone. Controls sit
+  on darker panels with a lit top edge and a soft shadow, section titles are
+  small capitals to match the left column, and the sliders, switches, color
+  swatches and buttons are Dowey's own, drawn in the ring color. They keep
+  that color when the window is in the background instead of greying out.
+  The custom color is a spectrum swatch that opens the color panel.
+- The Shortcuts tab uses the same panels and key caps.
+- The settings window no longer moves when you drag on its background; drag
+  it by the titlebar or the tabs.
+
 ## [1.4.2] — 2026-11-12
 
 ### Fixed

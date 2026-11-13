@@ -18,6 +18,7 @@
 		3B0000000000000000000009 /* ZoneMath.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A0000000000000000000007 /* ZoneMath.swift */; };
 		3B000000000000000000010 /* Settings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A000000000000000000010 /* Settings.swift */; };
 		3B000000000000000000011 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A000000000000000000011 /* SettingsView.swift */; };
+		3B0000000000000000000F1 /* DoweyStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A0000000000000000000F1 /* DoweyStyle.swift */; };
 		3B000000000000000000012 /* SettingsWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A000000000000000000012 /* SettingsWindowController.swift */; };
 		3B000000000000000000013 /* GesturePreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A000000000000000000013 /* GesturePreviewView.swift */; };
 		3B000000000000000000014 /* DoweyGlyph.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A000000000000000000014 /* DoweyGlyph.swift */; };
@@ -49,6 +50,7 @@
 		3A000000000000000000000B /* DoweyTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = DoweyTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		3A000000000000000000010 /* Settings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Settings.swift; sourceTree = "<group>"; };
 		3A000000000000000000011 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		3A0000000000000000000F1 /* DoweyStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DoweyStyle.swift; sourceTree = "<group>"; };
 		3A000000000000000000012 /* SettingsWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsWindowController.swift; sourceTree = "<group>"; };
 		3A000000000000000000013 /* GesturePreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GesturePreviewView.swift; sourceTree = "<group>"; };
 		3A000000000000000000014 /* DoweyGlyph.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DoweyGlyph.swift; sourceTree = "<group>"; };
@@ -96,6 +98,7 @@
 				3A0000000000000000000007 /* ZoneMath.swift */,
 				3A000000000000000000010 /* Settings.swift */,
 				3A000000000000000000011 /* SettingsView.swift */,
+				3A0000000000000000000F1 /* DoweyStyle.swift */,
 				3A000000000000000000012 /* SettingsWindowController.swift */,
 				3A000000000000000000013 /* GesturePreviewView.swift */,
 				3A000000000000000000014 /* DoweyGlyph.swift */,
@@ -222,6 +225,7 @@
 				3B0000000000000000000007 /* ZoneMath.swift in Sources */,
 				3B000000000000000000010 /* Settings.swift in Sources */,
 				3B000000000000000000011 /* SettingsView.swift in Sources */,
+				3B0000000000000000000F1 /* DoweyStyle.swift in Sources */,
 				3B000000000000000000012 /* SettingsWindowController.swift in Sources */,
 				3B000000000000000000013 /* GesturePreviewView.swift in Sources */,
 				3B000000000000000000014 /* DoweyGlyph.swift in Sources */,

@@ -107,7 +107,10 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate, NSTo
         // strip with nothing between them; with the material it passes under
         // frosted glass instead, the way every system settings window does.
         window.titlebarAppearsTransparent = false
-        window.isMovableByWindowBackground = true
+        // Off: the sliders are drawn in SwiftUI rather than being NSSliders, and
+        // with this on a drag on a knob moved the whole window instead. The
+        // titlebar and tab strip still drag the window.
+        window.isMovableByWindowBackground = false
         // The live preview tracks the pointer, and mouse-moved events are only
         // delivered to a window that asks for them.
         window.acceptsMouseMovedEvents = true
