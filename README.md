@@ -198,10 +198,11 @@ it, run one command:
 
 ```bash
 Tools/release.sh                     # patch: 1.4.1 -> 1.4.2
-Tools/release.sh minor "short title" # 1.4.2 -> 1.5.0
+Tools/release.sh minor "one-line summary" # 1.4.2 -> 1.5.0
 ```
 
-It runs the tests, bumps `MARKETING_VERSION`, dates the changelog entry, builds
+Release titles are just the version (`Dowey 1.5.0`); the summary, if you
+give one, opens the description. It runs the tests, bumps `MARKETING_VERSION`, dates the changelog entry, builds
 and signs Release, zips it into `dist/`, commits, tags, pushes, publishes the
 GitHub release and installs the build into `/Applications`. It refuses to run
 on a dirty tree, off `main`, or with nothing under `[Unreleased]`.

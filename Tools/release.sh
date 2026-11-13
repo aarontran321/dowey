@@ -3,7 +3,7 @@
 # Cuts a Dowey release in one command.
 #
 #   Tools/release.sh                      # patch bump: 1.4.1 -> 1.4.2
-#   Tools/release.sh minor "new thing"    # 1.4.2 -> 1.5.0, titled "Dowey 1.5.0 - new thing"
+#   Tools/release.sh minor "new thing"    # 1.4.2 -> 1.5.0, "new thing" opens the description
 #   Tools/release.sh 2.0.0 "big change"   # explicit version
 #
 # Day to day, just commit to main and add a line under "## [Unreleased]" in
@@ -51,10 +51,11 @@ git rev-parse -q --verify "refs/tags/$TAG" >/dev/null && die "$TAG already exist
 NOTES_BODY="$(awk '/^## \[Unreleased\]/{f=1;next} /^## \[/{f=0} f' CHANGELOG.md | sed '/./,$!d')"
 [[ -n "${NOTES_BODY//[[:space:]]/}" ]] || die "CHANGELOG.md has nothing under ## [Unreleased]"
 
+# The title is the version and nothing else. A one-line summary, if given,
+# opens the description instead.
 TITLE="Dowey $VERSION"
-[[ -n "$SUMMARY" ]] && TITLE="$TITLE - $SUMMARY"
 
-echo "Releasing $CURRENT -> $VERSION  ($TITLE)"
+echo "Releasing $CURRENT -> $VERSION"
 
 # --- Test, bump, build -----------------------------------------------------
 
@@ -79,7 +80,11 @@ ZIP="dist/Dowey-$VERSION.zip"
 NOTES="dist/release-notes-$VERSION.md"
 rm -f "$ZIP"
 ditto -c -k --keepParent "$APP" "$ZIP"
-printf '%s\n' "$NOTES_BODY" > "$NOTES"
+if [[ -n "$SUMMARY" ]]; then
+    printf '%s\n\n%s\n' "$SUMMARY" "$NOTES_BODY" > "$NOTES"
+else
+    printf '%s\n' "$NOTES_BODY" > "$NOTES"
+fi
 
 # --- Commit, tag, publish --------------------------------------------------
 
