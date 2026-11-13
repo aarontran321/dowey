@@ -6,6 +6,24 @@ the public shape — the gesture, the zone layouts, and the names and meanings
 of the settings — is stable: a breaking change to any of them takes a major
 bump.
 
+## [Unreleased]
+
+### Added
+- **Dowey updates itself.** When a newer release is out, the menu bar menu
+  offers **Update to Dowey X.Y.Z** and Settings shows an **Install** button.
+  Dowey downloads the release, checks it is Dowey, is the version it claims
+  and is signed by the same developer as the running copy, swaps it in and
+  relaunches. Because Dowey downloads it rather than a browser, the update
+  opens without the Gatekeeper prompt. Anything that fails a check is refused
+  and nothing on disk changes.
+- **Check for updates** in Settings → General, on by default. Checks happen at
+  launch, when the menu opens and when Settings opens, at most every six
+  hours — never on a timer. It is the only network request Dowey makes, and
+  turning it off stops it. **Check Now** runs one on demand.
+
+### Changed
+- The version number moved from the bottom of Settings into the update row.
+
 ## [1.4.3] — 2026-11-13
 
 ### Changed

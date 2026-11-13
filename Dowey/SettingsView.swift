@@ -174,6 +174,11 @@ struct SettingsView: View {
                                                           set: { settings.opensAtLogin = $0 }))
                         .toggleStyle(.dowey)
                     PanelDivider()
+                    Toggle("Check for updates", isOn: $settings.checkForUpdates)
+                        .toggleStyle(.dowey)
+                    PanelDivider()
+                    UpdateRow(updater: .shared)
+                    PanelDivider()
                     permissionRow("Accessibility", granted: permissions.accessibility,
                                   action: openAccessibilitySettings)
                     PanelDivider()
@@ -186,9 +191,6 @@ struct SettingsView: View {
                         .buttonStyle(DoweyButtonStyle())
                         .disabled(settings.isDefault)
                     Spacer()
-                    Text(versionString)
-                        .font(.system(size: 11))
-                        .foregroundStyle(.tertiary)
                 }
                 .padding(.top, 24)
                 .padding(.horizontal, 4)
@@ -238,11 +240,6 @@ struct SettingsView: View {
         }
     }
 
-    private var versionString: String {
-        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—"
-        return "Dowey \(version)"
-    }
-
     private func openAccessibilitySettings() {
         open("x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")
     }
@@ -254,6 +251,71 @@ struct SettingsView: View {
     private func open(_ urlString: String) {
         guard let url = URL(string: urlString) else { return }
         NSWorkspace.shared.open(url)
+    }
+}
+
+// MARK: - Updates
+
+/// The installed version and whatever the Updater has to say about it, with
+/// the one action that fits: check, install, or fall back to the release page.
+private struct UpdateRow: View {
+    @ObservedObject var updater: Updater
+
+    var body: some View {
+        ControlRow(title: "Dowey \(updater.currentVersion)") {
+            HStack(spacing: 10) {
+                status
+                action
+            }
+        }
+    }
+
+    @ViewBuilder private var status: some View {
+        switch updater.state {
+        case .idle:
+            EmptyView()
+        case .checking:
+            busy("Checking…")
+        case .upToDate:
+            note("Up to date")
+        case .available(let release):
+            note("\(release.version) is available")
+        case .installing(let release):
+            busy("Installing \(release.version)…")
+        case .failed(let message, _):
+            Text(message)
+                .font(.system(size: 12))
+                .foregroundStyle(Color(nsColor: .systemOrange))
+        }
+    }
+
+    @ViewBuilder private var action: some View {
+        switch updater.state {
+        case .available:
+            Button("Install") { updater.install() }
+                .buttonStyle(DoweyButtonStyle(prominent: true))
+        case .failed(_, let release?):
+            Button("Open Release Page") { updater.openReleasePage(release) }
+                .buttonStyle(DoweyButtonStyle())
+        case .checking, .installing:
+            EmptyView()
+        default:
+            Button("Check Now") { updater.checkNow() }
+                .buttonStyle(DoweyButtonStyle())
+        }
+    }
+
+    private func note(_ text: String) -> some View {
+        Text(text)
+            .font(.system(size: 12))
+            .foregroundStyle(.secondary)
+    }
+
+    private func busy(_ text: String) -> some View {
+        HStack(spacing: 6) {
+            ProgressView().controlSize(.small)
+            note(text)
+        }
     }
 }
 

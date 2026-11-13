@@ -16,9 +16,13 @@
 		3B0000000000000000000007 /* ZoneMath.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A0000000000000000000007 /* ZoneMath.swift */; };
 		3B0000000000000000000008 /* ZoneMathTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A0000000000000000000009 /* ZoneMathTests.swift */; };
 		3B0000000000000000000009 /* ZoneMath.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A0000000000000000000007 /* ZoneMath.swift */; };
+		3B0000000000000000000F3 /* Version.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A0000000000000000000F3 /* Version.swift */; };
+		3B0000000000000000000F4 /* Version.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A0000000000000000000F3 /* Version.swift */; };
+		3B0000000000000000000F5 /* VersionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A0000000000000000000F4 /* VersionTests.swift */; };
 		3B000000000000000000010 /* Settings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A000000000000000000010 /* Settings.swift */; };
 		3B000000000000000000011 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A000000000000000000011 /* SettingsView.swift */; };
 		3B0000000000000000000F1 /* DoweyStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A0000000000000000000F1 /* DoweyStyle.swift */; };
+		3B0000000000000000000F2 /* Updater.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A0000000000000000000F2 /* Updater.swift */; };
 		3B000000000000000000012 /* SettingsWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A000000000000000000012 /* SettingsWindowController.swift */; };
 		3B000000000000000000013 /* GesturePreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A000000000000000000013 /* GesturePreviewView.swift */; };
 		3B000000000000000000014 /* DoweyGlyph.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A000000000000000000014 /* DoweyGlyph.swift */; };
@@ -46,11 +50,14 @@
 		3A0000000000000000000007 /* ZoneMath.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZoneMath.swift; sourceTree = "<group>"; };
 		3A0000000000000000000008 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		3A0000000000000000000009 /* ZoneMathTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZoneMathTests.swift; sourceTree = "<group>"; };
+		3A0000000000000000000F3 /* Version.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Version.swift; sourceTree = "<group>"; };
+		3A0000000000000000000F4 /* VersionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VersionTests.swift; sourceTree = "<group>"; };
 		3A000000000000000000000A /* Dowey.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Dowey.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		3A000000000000000000000B /* DoweyTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = DoweyTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		3A000000000000000000010 /* Settings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Settings.swift; sourceTree = "<group>"; };
 		3A000000000000000000011 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		3A0000000000000000000F1 /* DoweyStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DoweyStyle.swift; sourceTree = "<group>"; };
+		3A0000000000000000000F2 /* Updater.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Updater.swift; sourceTree = "<group>"; };
 		3A000000000000000000012 /* SettingsWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsWindowController.swift; sourceTree = "<group>"; };
 		3A000000000000000000013 /* GesturePreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GesturePreviewView.swift; sourceTree = "<group>"; };
 		3A000000000000000000014 /* DoweyGlyph.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DoweyGlyph.swift; sourceTree = "<group>"; };
@@ -96,9 +103,11 @@
 				3A0000000000000000000005 /* RadialHUDView.swift */,
 				3A0000000000000000000006 /* PreviewOverlayView.swift */,
 				3A0000000000000000000007 /* ZoneMath.swift */,
+				3A0000000000000000000F3 /* Version.swift */,
 				3A000000000000000000010 /* Settings.swift */,
 				3A000000000000000000011 /* SettingsView.swift */,
 				3A0000000000000000000F1 /* DoweyStyle.swift */,
+				3A0000000000000000000F2 /* Updater.swift */,
 				3A000000000000000000012 /* SettingsWindowController.swift */,
 				3A000000000000000000013 /* GesturePreviewView.swift */,
 				3A000000000000000000014 /* DoweyGlyph.swift */,
@@ -112,6 +121,7 @@
 			isa = PBXGroup;
 			children = (
 				3A0000000000000000000009 /* ZoneMathTests.swift */,
+				3A0000000000000000000F4 /* VersionTests.swift */,
 			);
 			path = DoweyTests;
 			sourceTree = "<group>";
@@ -223,9 +233,11 @@
 				3B0000000000000000000005 /* RadialHUDView.swift in Sources */,
 				3B0000000000000000000006 /* PreviewOverlayView.swift in Sources */,
 				3B0000000000000000000007 /* ZoneMath.swift in Sources */,
+				3B0000000000000000000F3 /* Version.swift in Sources */,
 				3B000000000000000000010 /* Settings.swift in Sources */,
 				3B000000000000000000011 /* SettingsView.swift in Sources */,
 				3B0000000000000000000F1 /* DoweyStyle.swift in Sources */,
+				3B0000000000000000000F2 /* Updater.swift in Sources */,
 				3B000000000000000000012 /* SettingsWindowController.swift in Sources */,
 				3B000000000000000000013 /* GesturePreviewView.swift in Sources */,
 				3B000000000000000000014 /* DoweyGlyph.swift in Sources */,
@@ -238,6 +250,8 @@
 			files = (
 				3B0000000000000000000008 /* ZoneMathTests.swift in Sources */,
 				3B0000000000000000000009 /* ZoneMath.swift in Sources */,
+				3B0000000000000000000F4 /* Version.swift in Sources */,
+				3B0000000000000000000F5 /* VersionTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

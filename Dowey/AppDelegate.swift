@@ -26,11 +26,15 @@ struct PermissionStatus {
     }
 }
 
-final class AppDelegate: NSObject, NSApplicationDelegate {
+@MainActor
+final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     private let monitor = GlobalEventMonitor()
     private let shortcuts = GlobeShortcuts()
     private var statusItem: NSStatusItem?
+    /// Top of the menu, shown only while there is an update to talk about.
+    private let updateItem = NSMenuItem()
+    private let updateSeparator = NSMenuItem.separator()
     private var cancellables: Set<AnyCancellable> = []
 
     // MARK: - Lifecycle
@@ -42,6 +46,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         _ = Settings.shared
         monitor.start()
         setUpShortcuts()
+        setUpUpdates()
 
         let status = PermissionStatus.current()
         if !status.allGranted {
@@ -92,6 +97,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         item.button?.image = DoweyGlyph.statusItem()
 
         let menu = NSMenu()
+        menu.delegate = self
+        // The update item is greyed out while an install runs, which only
+        // sticks with automatic enabling off.
+        menu.autoenablesItems = false
+
+        updateItem.target = self
+        updateItem.action = #selector(updateItemChosen)
+        menu.addItem(updateItem)
+        menu.addItem(updateSeparator)
 
         let settings = NSMenuItem(title: "Settings…", action: #selector(openSettings), keyEquivalent: ",")
         settings.target = self
@@ -107,6 +121,52 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func openSettings() {
         SettingsWindowController.shared.show()
+    }
+
+    func menuWillOpen(_ menu: NSMenu) {
+        Updater.shared.checkIfDue()
+    }
+
+    // MARK: - Updates
+
+    private func setUpUpdates() {
+        Updater.shared.$state
+            .receive(on: RunLoop.main)
+            .sink { [weak self] state in self?.showUpdateState(state) }
+            .store(in: &cancellables)
+        Updater.shared.checkIfDue()
+    }
+
+    private func showUpdateState(_ state: Updater.State) {
+        var title: String?
+        var enabled = true
+        switch state {
+        case .available(let release):
+            title = "Update to Dowey \(release.version)"
+        case .installing(let release):
+            title = "Installing Dowey \(release.version)…"
+            enabled = false
+        case .failed(_, let release?):
+            title = "Download Dowey \(release.version) from GitHub…"
+        default:
+            break
+        }
+        updateItem.title = title ?? ""
+        updateItem.isEnabled = enabled
+        updateItem.isHidden = title == nil
+        updateSeparator.isHidden = title == nil
+    }
+
+    @objc private func updateItemChosen() {
+        let updater = Updater.shared
+        switch updater.state {
+        case .available:
+            updater.install()
+        case .failed(_, let release):
+            updater.openReleasePage(release)
+        default:
+            break
+        }
     }
 
     // MARK: - Permissions

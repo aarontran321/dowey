@@ -242,6 +242,7 @@ final class Settings: ObservableObject {
         /// launch so a choice made under the old name survives the rename.
         static let legacySixZones = "sixZones"
         static let globeShortcuts = "globeShortcuts"
+        static let checkForUpdates = "checkForUpdates"
         /// Assigned actions, keyed by `ArrowKey.rawValue`. Only keys the user
         /// has changed are stored; the rest read their default.
         static let shortcutActions = "shortcutActions"
@@ -309,6 +310,9 @@ final class Settings: ObservableObject {
     /// which installs or removes the event tap to match.
     @Published var globeShortcutsEnabled: Bool { didSet { commit(globeShortcutsEnabled, Key.globeShortcuts) } }
 
+    /// Lets the Updater ask GitHub for a newer release. Its only network use.
+    @Published var checkForUpdates: Bool { didSet { commit(checkForUpdates, Key.checkForUpdates) } }
+
     @Published private var shortcutActions: [String: String] { didSet { commit(shortcutActions, Key.shortcutActions) } }
 
     func shortcut(for key: ArrowKey) -> ShortcutAction {
@@ -355,6 +359,7 @@ final class Settings: ObservableObject {
             eightZones = (d.zoneLayout == .eight)
         }
         globeShortcutsEnabled = defaults.object(forKey: Key.globeShortcuts) as? Bool ?? true
+        checkForUpdates = defaults.object(forKey: Key.checkForUpdates) as? Bool ?? true
         shortcutActions = defaults.dictionary(forKey: Key.shortcutActions) as? [String: String] ?? [:]
 
         ZoneMath.deadzoneRadius = CGFloat(triggerDistance)

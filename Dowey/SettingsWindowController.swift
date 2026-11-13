@@ -75,6 +75,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate, NSTo
         NSApp.activate(ignoringOtherApps: true)
         if window == nil { window = makeWindow() }
         window?.makeKeyAndOrderFront(nil)
+        Updater.shared.checkIfDue()
     }
 
     /// Closing frees the window and the whole SwiftUI hierarchy under it.

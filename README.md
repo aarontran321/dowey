@@ -6,6 +6,7 @@ A tiny, native macOS window snapper. Hold the **Globe (🌐 / fn)** key, flick t
 - Release without moving → maximize to the visible screen area.
 - Escape → cancel, nothing moves.
 - Six ring designs, each with its own parameter, chosen from a gallery next to a live preview. Nothing to save; every control commits as you touch it.
+- Updates itself: when a new release is out, the menu offers it and one click installs it.
 - No Dock icon, no polling, no third-party dependencies. Idles at 0.0% CPU.
 
 Requires macOS 13 or later. Not sandboxed — it moves other apps' windows, which the App Sandbox forbids.
@@ -131,6 +132,29 @@ enforced by TCC and no signing certificate can waive them.
 
 To build from source instead, which sidesteps all of the above, see
 [Build and install](#build-and-install).
+
+### Updates
+
+From 1.5.0 on, Dowey keeps itself current. When a newer release is out, the
+menu bar menu shows **Update to Dowey X.Y.Z** and Settings → General shows an
+**Install** button. Either one downloads the release, checks it, swaps it in
+and relaunches. The Gatekeeper step above is not repeated: Dowey downloads the
+update itself, and macOS only blocks apps that arrive through a browser.
+
+- **When it checks.** At launch, when you open the menu and when you open
+  Settings — at most once every six hours. There is no timer.
+- **What it sends.** One request to the GitHub releases API for this
+  repository. It is the only network request Dowey makes. Turn off **Settings →
+  Check for updates** and it makes none; **Check Now** still works on demand.
+- **What it trusts.** The new build must be Dowey, must be the version the
+  release says it is, and must be signed by the same developer as the copy you
+  are running. Anything else is refused and nothing on disk changes.
+- **When it can't.** If Dowey cannot replace itself — it is not in a folder you
+  can write to, or macOS is running it from a quarantine location because it
+  was never moved to Applications — it says so and offers the release page.
+
+Accessibility and Input Monitoring stay granted across updates, because each
+release is signed by the same developer.
 
 ## Setup
 
@@ -358,7 +382,9 @@ between gestures.
 | `AppDelegate.swift` | Launch-time permission check, status item and menu, reopen handling. |
 | `Settings.swift` | The store: `RingDesign` and its per-design parameters, every other customizable value, UserDefaults persistence, the `Style` snapshot the overlays read, and the login item. |
 | `SettingsView.swift` | The two-column window: preview and design gallery on the left, the selected design's controls on the right (SwiftUI). |
-| `SettingsWindowController.swift` | Its window: transparent titlebar, vibrant background, ⌘W / ⌘Q. |
+| `SettingsWindowController.swift` | Its window: toolbar tabs, vibrant background, ⌘W / ⌘Q. |
+| `DoweyStyle.swift` | The settings window's own controls — panel, slider, switch, swatch, button — drawn in the ring color. |
+| `Updater.swift` | Checks GitHub for a newer release, verifies the download's signature against the running app's, swaps it in and relaunches. |
 | `GesturePreviewView.swift` | The live preview — real ring, real destination tile, real zone math, on a miniature desktop. |
 | `DoweyGlyph.swift` | The circle: menu bar template image and app icon artwork. |
 | `GlobalEventMonitor.swift` | The state machine — Idle → Armed → Tracking → Commit/Cancel — and every event monitor's lifecycle. |
