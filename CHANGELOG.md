@@ -6,7 +6,7 @@ the public shape — the gesture, the zone layouts, and the names and meanings
 of the settings — is stable: a breaking change to any of them takes a major
 bump.
 
-## [Unreleased]
+## [1.4.3] — 2026-11-13
 
 ### Changed
 - **Settings has its own look.** The stock grouped form is gone. Controls sit
