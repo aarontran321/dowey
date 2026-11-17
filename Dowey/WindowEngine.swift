@@ -112,7 +112,7 @@ enum WindowEngine {
                               at mouseLocation: CGPoint) -> Result<CGRect, WindowEngineError> {
         guard let visible = visibleFrame(containing: mouseLocation) else { return .failure(.noTargetScreen) }
         let destination = target.rect(in: visible)
-        if let error = setFrame(destination, for: window) { return .failure(error) }
+        if let error = setFrame(destination, for: window, within: visible) { return .failure(error) }
         return .success(destination)
     }
 
@@ -219,8 +219,18 @@ enum WindowEngine {
         return CGRect(origin: origin, size: size)
     }
 
-    /// `rect` is in Cocoa screen space (bottom-left origin, y-up).
-    private static func setFrame(_ rect: CGRect, for window: AXUIElement) -> WindowEngineError? {
+    /// Set by assistive apps (Grammarly, VoiceOver, some window tools) on other
+    /// apps. While it is on, many apps — Chromium and Electron especially —
+    /// animate every AX frame change, so a position and a size set back to back
+    /// race each other and the window lands at a mix of the old and new frames.
+    private static let kAXEnhancedUserInterface = "AXEnhancedUserInterface" as CFString
+
+    /// `rect` and `visible` are in Cocoa screen space (bottom-left origin, y-up).
+    /// `visible` is the screen's `visibleFrame`: whatever the app does with the
+    /// requested size, the window is kept off the Dock and menu bar.
+    private static func setFrame(_ rect: CGRect,
+                                 for window: AXUIElement,
+                                 within visible: CGRect) -> WindowEngineError? {
         let axRect = cocoaToAccessibility(rect)
 
         var origin = axRect.origin
@@ -231,21 +241,71 @@ enum WindowEngine {
             return .axFailure(.failure)
         }
 
-        // Both attributes are set without returning to the run loop, so the
-        // window server composites one frame change rather than a move-then-resize.
+        let app = application(of: window)
+        let hadEnhancedUI = app.map { boolAttribute(kAXEnhancedUserInterface, of: $0) } ?? false
+        if let app, hadEnhancedUI {
+            AXUIElementSetAttributeValue(app, kAXEnhancedUserInterface, kCFBooleanFalse)
+        }
+        defer {
+            if let app, hadEnhancedUI {
+                AXUIElementSetAttributeValue(app, kAXEnhancedUserInterface, kCFBooleanTrue)
+            }
+        }
+
+        // Size, position, size. Resizing first means the move is never judged
+        // against the old (possibly taller) frame; resizing again catches apps
+        // that clipped the first resize against a screen edge at the old spot.
+        // All in one run-loop turn, so the window server composites one change.
+        let firstSizeStatus = AXUIElementSetAttributeValue(window, kAXSizeAttribute as CFString, sizeValue)
         let positionStatus = AXUIElementSetAttributeValue(window, kAXPositionAttribute as CFString, positionValue)
         let sizeStatus = AXUIElementSetAttributeValue(window, kAXSizeAttribute as CFString, sizeValue)
 
-        // Apps that enforce a minimum size can push the window back off-origin
-        // while honoring the resize. Re-asserting the position (still in this
-        // same run-loop turn) lands those windows flush against the zone edge.
-        if positionStatus == .success && sizeStatus == .success {
-            AXUIElementSetAttributeValue(window, kAXPositionAttribute as CFString, positionValue)
-        }
-
         if positionStatus != .success { return .axFailure(positionStatus) }
-        if sizeStatus != .success { return .axFailure(sizeStatus) }
+        if sizeStatus != .success && firstSizeStatus != .success { return .axFailure(sizeStatus) }
+
+        // An app with a minimum height or resize increments (terminals, some
+        // editors) can end up taller than the zone; anchored at the zone's top,
+        // a bottom-half window then hangs under the Dock. Slide it up instead.
+        keepInside(visible, window: window)
+
+        // Chromium and Electron apps apply AX changes asynchronously, so the
+        // frame read just now can still be the old one. Check once more after
+        // they have caught up.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+            keepInside(visible, window: window)
+        }
         return nil
+    }
+
+    /// Moves `window` up (or down) just enough that it sits inside `visible`.
+    /// Never resizes: a window taller than the visible frame is pinned to its top.
+    private static func keepInside(_ visible: CGRect, window: AXUIElement) {
+        guard let current = frame(of: window) else { return }
+        let bounds = cocoaToAccessibility(visible) // AX space: y grows downward
+
+        var y = current.minY
+        if current.maxY > bounds.maxY + 1 { y = bounds.maxY - current.height }
+        if y < bounds.minY - 1 { y = bounds.minY }
+        guard abs(y - current.minY) > 1 else { return }
+
+        var origin = CGPoint(x: current.minX, y: y)
+        guard let positionValue = AXValueCreate(.cgPoint, &origin) else { return }
+        AXUIElementSetAttributeValue(window, kAXPositionAttribute as CFString, positionValue)
+    }
+
+    private static func application(of window: AXUIElement) -> AXUIElement? {
+        var pid: pid_t = 0
+        guard AXUIElementGetPid(window, &pid) == .success else { return nil }
+        let app = AXUIElementCreateApplication(pid)
+        AXUIElementSetMessagingTimeout(app, 1.0)
+        return app
+    }
+
+    private static func boolAttribute(_ attribute: CFString, of element: AXUIElement) -> Bool {
+        var value: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(element, attribute, &value) == .success,
+              let value, CFGetTypeID(value) == CFBooleanGetTypeID() else { return false }
+        return CFBooleanGetValue((value as! CFBoolean))
     }
 
     /// Cocoa screen coordinates are bottom-left origin and y-up; the
