@@ -2,9 +2,10 @@
 //  SettingsView.swift
 //  Dowey
 //
-//  The General tab is the whole ring surface, in two even columns: what it looks like on the left
-//  — the live preview, the design gallery and the zone layout — and the knobs
-//  for whatever is selected on the right.
+//  The Ring tab is the whole ring surface, in two even columns: what it looks
+//  like on the left — the live preview and the design gallery — and the knobs
+//  for whatever is selected on the right. App setup (login, permissions) lives
+//  on its own General tab so it never crowds the ring.
 //
 //  Neither column is privileged: both take half the window, so widening it
 //  feeds the preview and the controls equally.
@@ -20,7 +21,7 @@ struct SettingsView: View {
 
     enum Metrics {
         /// Half of this is the narrowest a column may get: below it the
-        /// gallery's three tiles stop being legible.
+        /// right column's one-line slider rows run out of track.
         static let minWindowWidth: CGFloat = 1000
     }
 
@@ -31,8 +32,9 @@ struct SettingsView: View {
     var body: some View {
         Group {
             switch navigation.tab {
-            case .general:   general
+            case .ring:      ring
             case .shortcuts: ShortcutsView(settings: settings)
+            case .general:   GeneralView(settings: settings, permissions: permissions)
             }
         }
         .tint(Color(nsColor: settings.tintColor))
@@ -44,7 +46,7 @@ struct SettingsView: View {
         }
     }
 
-    private var general: some View {
+    private var ring: some View {
         HStack(spacing: 0) {
             stage.frame(maxWidth: .infinity)
             Divider()
@@ -70,25 +72,24 @@ struct SettingsView: View {
         }
     }
 
-    /// Scrolled, because the preview is sized from the ring's own maximum and
-    /// the gallery grows with the design count — neither is something the
-    /// window height can be assumed to cover.
+    /// Scrolled, because the preview is sized from the ring's own maximum —
+    /// not something the window height can be assumed to cover.
     private var stageContent: some View {
         VStack(alignment: .leading, spacing: 0) {
             GesturePreview(style: settings.style)
                 .frame(height: GesturePreviewView.preferredHeight)
                 .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
 
-            Text("Actual size — move the pointer here to try it")
-                .font(.caption)
-                .foregroundStyle(.tertiary)
-                .padding(.top, 8)
-
             SectionHeader("Ring design")
                 .padding(.top, 28)
-                .padding(.bottom, 4)
 
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 14), count: 3), spacing: 18) {
+            Panel {
+                Toggle("Show at the pointer", isOn: $settings.showRing)
+                    .toggleStyle(.dowey)
+            }
+            .padding(.bottom, 16)
+
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 14), count: 2), spacing: 18) {
                 ForEach(RingDesign.allCases) { design in
                     DesignCell(style: settings.style(for: design).miniature(radius: 30),
                                name: design.name,
@@ -97,18 +98,7 @@ struct SettingsView: View {
                         .help(design.summary)
                 }
             }
-
-            SectionHeader("Zones")
-                .padding(.top, 28)
-
-            Panel {
-                Toggle("Eight zones", isOn: $settings.eightZones)
-                    .toggleStyle(.dowey)
-            }
-
-            PanelFootnote(settings.eightZones
-                 ? "Adds Top and Bottom. Left and Right narrow to 50° to make room, and the quarters to 45°."
-                 : "Halves and quarters, the original ring. Left and Right take a generous 90° each.")
+            .opacity(settings.showRing ? 1 : 0.45)
 
             Spacer(minLength: 0)
         }
@@ -122,26 +112,21 @@ struct SettingsView: View {
             VStack(alignment: .leading, spacing: 0) {
                 SectionHeader(settings.design.name)
                 Panel {
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text("Color").font(.system(size: 13))
-                        swatches
-                    }
-                    .padding(.vertical, 12)
+                    ControlRow(title: "Color") { swatches }
                     PanelDivider()
                     SliderRow(title: "Size", value: $settings.ringRadius,
-                              range: Settings.Range.ringRadius, low: "Small", high: "Large")
-                    PanelDivider()
-                    SliderRow(title: "Thickness", value: $settings.ringThickness,
-                              range: Settings.Range.ringThickness, low: "Thin", high: "Thick")
+                              range: Settings.Range.ringRadius)
                     PanelDivider()
                     SliderRow(title: settings.design.detail.label,
                               value: Binding(get: { settings.detail }, set: { settings.detail = $0 }),
-                              range: settings.design.detail.range, low: "Less", high: "More")
+                              range: settings.design.detail.range)
                     PanelDivider()
-                    Toggle("Show at the pointer", isOn: $settings.showRing)
-                        .toggleStyle(.dowey)
+                    MoreOptions {
+                        PanelDivider()
+                        SliderRow(title: "Thickness", value: $settings.ringThickness,
+                                  range: Settings.Range.ringThickness)
+                    }
                 }
-                PanelFootnote(settings.design.summary)
 
                 SectionHeader("Destination").padding(.top, 28)
                 Panel {
@@ -149,36 +134,28 @@ struct SettingsView: View {
                         .toggleStyle(.dowey)
                     PanelDivider()
                     Group {
-                        SliderRow(title: "Opacity", value: $settings.previewOpacity,
-                                  range: Settings.Range.previewOpacity, low: "Clear", high: "Solid")
-                        PanelDivider()
-                        SliderRow(title: "Corners", value: $settings.previewCornerRadius,
-                                  range: Settings.Range.previewCornerRadius, low: "Square", high: "Round")
-                        PanelDivider()
                         Toggle("Use the ring color", isOn: $settings.previewUsesTint)
                             .toggleStyle(.dowey)
+                        PanelDivider()
+                        MoreOptions {
+                            PanelDivider()
+                            SliderRow(title: "Opacity", value: $settings.previewOpacity,
+                                      range: Settings.Range.previewOpacity)
+                            PanelDivider()
+                            SliderRow(title: "Corners", value: $settings.previewCornerRadius,
+                                      range: Settings.Range.previewCornerRadius)
+                        }
                     }
                     .disabled(!settings.showPreview)
                 }
 
                 SectionHeader("Gesture").padding(.top, 28)
                 Panel {
-                    SliderRow(title: "Trigger distance", value: $settings.triggerDistance,
-                              range: Settings.Range.triggerDistance, low: "Short", high: "Long")
-                }
-                PanelFootnote("How far the pointer travels before Dowey picks a direction. Release inside this distance to maximize.")
-
-                SectionHeader("General").padding(.top, 28)
-                Panel {
-                    Toggle("Open at Login", isOn: Binding(get: { settings.opensAtLogin },
-                                                          set: { settings.opensAtLogin = $0 }))
+                    Toggle("Eight zones", isOn: $settings.eightZones)
                         .toggleStyle(.dowey)
                     PanelDivider()
-                    permissionRow("Accessibility", granted: permissions.accessibility,
-                                  action: openAccessibilitySettings)
-                    PanelDivider()
-                    permissionRow("Input Monitoring", granted: permissions.inputMonitoring,
-                                  action: openInputMonitoringSettings)
+                    SliderRow(title: "Trigger distance", value: $settings.triggerDistance,
+                              range: Settings.Range.triggerDistance)
                 }
 
                 HStack {
@@ -186,9 +163,6 @@ struct SettingsView: View {
                         .buttonStyle(DoweyButtonStyle())
                         .disabled(settings.isDefault)
                     Spacer()
-                    Text(versionString)
-                        .font(.system(size: 11))
-                        .foregroundStyle(.tertiary)
                 }
                 .padding(.top, 24)
                 .padding(.horizontal, 4)
@@ -223,6 +197,55 @@ struct SettingsView: View {
                 .help("Custom Color")
         }
     }
+}
+
+// MARK: - General tab
+
+/// App setup rather than ring styling: login item, the two permissions Dowey
+/// needs, and the version. One narrow column, like Shortcuts.
+private struct GeneralView: View {
+
+    @ObservedObject var settings: Settings
+    let permissions: PermissionStatus
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+                SectionHeader("Startup")
+                Panel {
+                    Toggle("Open at Login", isOn: Binding(get: { settings.opensAtLogin },
+                                                          set: { settings.opensAtLogin = $0 }))
+                        .toggleStyle(.dowey)
+                }
+
+                SectionHeader("Permissions").padding(.top, 28)
+                Panel {
+                    permissionRow("Accessibility", granted: permissions.accessibility,
+                                  action: { open("x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") })
+                    PanelDivider()
+                    permissionRow("Input Monitoring", granted: permissions.inputMonitoring,
+                                  action: { open("x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent") })
+                }
+
+                Text(versionString)
+                    .font(.system(size: 11))
+                    .foregroundStyle(.tertiary)
+                    .padding(.top, 24)
+                    .padding(.horizontal, 4)
+            }
+            .padding(.horizontal, 28)
+            .padding(.vertical, 24)
+            .frame(maxWidth: 560)
+            .frame(maxWidth: .infinity)
+        }
+        .background {
+            ZStack {
+                VisualEffect(material: .contentBackground)
+                ControlsCanvas(material: nil)
+            }
+            .ignoresSafeArea()
+        }
+    }
 
     private func permissionRow(_ title: String, granted: Bool, action: @escaping () -> Void) -> some View {
         ControlRow(title: title) {
@@ -241,14 +264,6 @@ struct SettingsView: View {
     private var versionString: String {
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—"
         return "Dowey \(version)"
-    }
-
-    private func openAccessibilitySettings() {
-        open("x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")
-    }
-
-    private func openInputMonitoringSettings() {
-        open("x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent")
     }
 
     private func open(_ urlString: String) {
