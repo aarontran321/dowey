@@ -3,7 +3,7 @@
 A small, native window snapper for macOS. Hold the **🌐 Globe** key, flick the mouse the way you want the window to go, and let go.
 
 - Snap to halves, quarters or the full screen with one flick.
-- Or use the keyboard alone: 🌐 + arrows snap, two arrows make a corner, and 🌐 + ⌥ + arrow picks which window to move.
+- Or use the keyboard alone: 🌐 + arrows snap, two arrows make a corner, and 🌐 + ⌘ + arrow picks which window to move.
 - Lives in the menu bar. No Dock icon, nothing running in the background while idle.
 - Updates itself.
 
@@ -35,15 +35,15 @@ Press **Esc** while holding 🌐 to cancel. The window snaps on whichever screen
 | 🌐 + ↑ | Fill the screen |
 | 🌐 + ← / → | Left or right half |
 | 🌐 + two arrows | A corner, e.g. ↑ + → for top-right |
-| 🌐 + ⌥ + arrow | Bring the nearest window that way to the front |
+| 🌐 + ⌘ + arrow | Bring the nearest window that way to the front |
 
 To move a window without touching the mouse:
 
-1. Hold 🌐 and ⌥. The window you're on gets an **orange outline labelled Pick**. Press arrows to jump to the window you want.
-2. Let go of ⌥, keep holding 🌐. The outline turns **your ring color and says Move**.
+1. Hold 🌐 and ⌘. The window you're on gets a **dashed outline labelled Pick**. Press arrows to jump to the window you want.
+2. Let go of ⌘, keep holding 🌐. The outline turns **solid and says Move**.
 3. Press an arrow (or two) to snap it. The outline follows the window. Let go of 🌐 when you're done.
 
-Orange always means you're choosing a window, and your ring color always means you're moving it.
+Dashed means you're choosing a window. Solid means you're moving it.
 
 Every arrow can be reassigned in **Settings → Shortcuts**.
 

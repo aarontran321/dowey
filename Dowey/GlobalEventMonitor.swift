@@ -271,7 +271,7 @@ final class GlobalEventMonitor {
         }
     }
 
-    /// The keyboard has taken over this Globe hold (a snap, a pick, or ⌥
+    /// The keyboard has taken over this Globe hold (a snap, a pick, or ⌘
     /// for Pick). The gesture steps aside — without this its release would
     /// maximize over what the keyboard did — and the window outline from
     /// `KeyboardModeOverlay` is the feedback instead of the ring.

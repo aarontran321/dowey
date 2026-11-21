@@ -309,7 +309,7 @@ final class Settings: ObservableObject {
     /// Two arrows held together (🌐 + ↑ + →) snap to the corner between them.
     @Published var cornerChords: Bool { didSet { commit(cornerChords, Key.cornerChords) } }
 
-    /// 🌐 + ⌥ + arrow focuses the nearest window that way, so the next
+    /// 🌐 + ⌘ + arrow focuses the nearest window that way, so the next
     /// 🌐 + arrow moves it — picking a window without the mouse.
     @Published var windowSelection: Bool { didSet { commit(windowSelection, Key.windowSelection) } }
 

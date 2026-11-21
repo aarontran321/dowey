@@ -55,7 +55,7 @@ final class GlobeShortcuts {
     /// not, by key code. Two of them at right angles make a corner.
     private var heldArrows: [Int64: Direction] = [:]
 
-    /// The window picked with 🌐 + ⌥ + arrow during this Globe hold. Snaps
+    /// The window picked with 🌐 + ⌘ + arrow during this Globe hold. Snaps
     /// act on it rather than asking which window is focused: activation is
     /// asynchronous, and an arrow pressed a moment after the pick could
     /// otherwise reach the window that had focus before it.
@@ -66,9 +66,9 @@ final class GlobeShortcuts {
     /// screen and would otherwise maximize on release.
     var willAct: (() -> Void)?
 
-    /// ⌥ as of the last modifier change. With Globe down it switches between
+    /// ⌘ as of the last modifier change. With Globe down it switches between
     /// Pick (held) and Move (let go).
-    private var optionDown = false
+    private var commandDown = false
 
     /// What the window outline is showing, or nil when there is none.
     private var mode: KeyboardMode?
@@ -135,11 +135,11 @@ final class GlobeShortcuts {
         case .tapDisabledByTimeout, .tapDisabledByUserInput:
             trigger?.setEnabled(true)
         case .flagsChanged:
-            let alt = event.flags.contains(.maskAlternate)
-            if alt != optionDown {
-                optionDown = alt
+            let command = event.flags.contains(.maskCommand)
+            if command != commandDown {
+                commandDown = command
                 if globeDown {
-                    DispatchQueue.main.async { [weak self] in self?.optionChanged(alt) }
+                    DispatchQueue.main.async { [weak self] in self?.commandChanged(command) }
                 }
             }
             guard event.getIntegerValueField(.keyboardEventKeycode) == Int64(Self.globeKeyCode) else { return }
@@ -158,8 +158,8 @@ final class GlobeShortcuts {
             selected = nil
             updateKeyTap()
             DispatchQueue.main.async { [weak self] in
-                // Globe pressed with ⌥ already down goes straight into Pick.
-                if isDown, alt { self?.optionChanged(true) }
+                // Globe pressed with ⌘ already down goes straight into Pick.
+                if isDown, command { self?.commandChanged(true) }
                 if !isDown { self?.endKeyboardMode() }
             }
         default:
@@ -196,8 +196,8 @@ final class GlobeShortcuts {
             let settings = Settings.shared
             let modifiers = event.flags.intersection(Self.otherModifiers)
 
-            // 🌐 + ⌥ + arrow: focus the next window that way.
-            if modifiers == .maskAlternate {
+            // 🌐 + ⌘ + arrow: focus the next window that way.
+            if modifiers == .maskCommand {
                 guard settings.windowSelection else { return event }
                 swallowed.insert(code)
                 // Off the tap's callback, like a snap: the window list and
@@ -284,9 +284,9 @@ extension GlobeShortcuts {
 
     // MARK: Pick and Move
 
-    /// ⌥ went down or up while Globe is held. Down shows Pick on the window
+    /// ⌘ went down or up while Globe is held. Down shows Pick on the window
     /// that would be picked from; up turns whatever is outlined into Move.
-    fileprivate func optionChanged(_ down: Bool) {
+    fileprivate func commandChanged(_ down: Bool) {
         guard globeDown, Settings.shared.windowSelection else { return }
         if down {
             willAct?()
@@ -305,12 +305,11 @@ extension GlobeShortcuts {
         present(mode, cocoaFrame: WindowEngine.cocoaToAccessibility(frame))
     }
 
-    /// Outlines `cocoaFrame` in `mode`'s color. If Globe is already up — a
+    /// Outlines `cocoaFrame` in `mode`'s style. If Globe is already up — a
     /// snap that landed after the release — it shows briefly and fades.
     fileprivate func present(_ mode: KeyboardMode, cocoaFrame: CGRect) {
         self.mode = mode
-        let tint = Settings.shared.tintColor
-        overlay.show(mode, on: cocoaFrame, color: mode.color(tint: tint), briefly: !globeDown)
+        overlay.show(mode, on: cocoaFrame, briefly: !globeDown)
         guard globeDown, releaseWatchdog == nil else { return }
         let watchdog = Timer(timeInterval: 0.2, repeats: true) { [weak self] _ in
             if !CGEventSource.keyState(.combinedSessionState, key: GlobeShortcuts.globeKeyCode) {

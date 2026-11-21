@@ -9,9 +9,10 @@ bump.
 ## [Unreleased]
 
 ### Changed
-- **You can always tell Pick from Move.** Holding 🌐 + ⌥ outlines the window
-  in orange with a **Pick** label, as soon as ⌥ goes down. Let go of ⌥ and the
-  outline turns your ring color with a **Move** label. Snaps from the keyboard
+- **Picking a window is now 🌐 + ⌘ + arrow** instead of 🌐 + ⌥ + arrow.
+- **You can always tell Pick from Move.** Holding 🌐 + ⌘ gives the window a
+  thin dashed outline and a small **Pick** label, as soon as ⌘ goes down. Let
+  go of ⌘ and the outline turns solid with a **Move** label. Snaps from the keyboard
   move the outline with the window instead of flashing the ring at the
   pointer, and letting go of 🌐 clears it.
 

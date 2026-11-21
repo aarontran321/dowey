@@ -367,11 +367,11 @@ private struct ShortcutsView: View {
                     PanelFootnote("🌐 + ↑ + → is top-right, 🌐 + ↓ + ← is bottom-left, and so on.")
 
                     Panel {
-                        Toggle("Pick windows with 🌐 + ⌥ + arrow keys", isOn: $settings.windowSelection)
+                        Toggle("Pick windows with 🌐 + ⌘ + arrow keys", isOn: $settings.windowSelection)
                             .toggleStyle(.dowey)
                     }
                     .padding(.top, 12)
-                    PanelFootnote("Orange outline: picking a window. Let go of ⌥ and it turns your ring color: arrows now move it.")
+                    PanelFootnote("A dashed outline means you are picking. Let go of ⌘ and it turns solid: arrows now move the window.")
                 }
                 .disabled(!settings.globeShortcutsEnabled)
                 .opacity(settings.globeShortcutsEnabled ? 1 : 0.45)

@@ -112,9 +112,10 @@ final class PreviewOverlayController {
 /// What the keyboard is doing while Globe is held, shown on the window it is
 /// doing it to.
 ///
-/// `pick` (🌐 + ⌥ held): choosing which window. `move` (🌐 alone): the chosen
-/// window will snap with the arrows. Each gets its own color and a label in
-/// the window's middle, so the two can never be mistaken for each other.
+/// `pick` (🌐 + ⌘ held): choosing which window. `move` (🌐 alone): the chosen
+/// window will snap with the arrows. Told apart by line, not by color — a
+/// dashed outline is the familiar "selecting" mark, a solid one is the window
+/// you have — and by a small frosted label that names the mode.
 enum KeyboardMode {
     case pick, move
 
@@ -127,8 +128,8 @@ enum KeyboardMode {
 
     var hint: String {
         switch self {
-        case .pick: return "⌥ + arrows to choose · let go of ⌥ to move it"
-        case .move: return "arrows to snap · two for a corner"
+        case .pick: return "⌘ arrows choose"
+        case .move: return "arrows snap"
         }
     }
 
@@ -139,25 +140,22 @@ enum KeyboardMode {
         }
     }
 
-    /// Move wears the ring color, so it reads as the same thing as the
-    /// gesture. Pick wears orange — or teal when the ring color is itself warm
-    /// enough to be confused with orange.
-    func color(tint: NSColor) -> NSColor {
-        switch self {
-        case .move:
-            return tint
-        case .pick:
-            let rgb = tint.usingColorSpace(.deviceRGB) ?? tint
-            let warm = rgb.saturationComponent > 0.25
-                && (rgb.hueComponent < 0.19 || rgb.hueComponent > 0.9)
-            return warm ? .systemTeal : .systemOrange
-        }
-    }
+    var isDashed: Bool { self == .pick }
 }
 
 final class KeyboardModeView: NSView {
 
-    private let pill = NSView()
+    private enum Metrics {
+        static let cornerRadius: CGFloat = 12
+        static let inset: CGFloat = 2.5
+    }
+
+    /// A soft dark edge under a thin light line, so the outline reads on a
+    /// white document and a dark one alike without any color of its own.
+    private let halo = CAShapeLayer()
+    private let line = CAShapeLayer()
+
+    private let label = NSVisualEffectView()
     private let icon = NSImageView()
     private let titleLabel = NSTextField(labelWithString: "")
     private let hintLabel = NSTextField(labelWithString: "")
@@ -165,54 +163,76 @@ final class KeyboardModeView: NSView {
     override init(frame: NSRect) {
         super.init(frame: frame)
         wantsLayer = true
-        layer?.cornerRadius = 12
-        layer?.borderWidth = 5
 
-        pill.wantsLayer = true
-        pill.layer?.cornerRadius = 14
-        pill.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.78).cgColor
-        pill.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(pill)
+        for (shape, color, width) in [(halo, NSColor.black.withAlphaComponent(0.28), CGFloat(4)),
+                                      (line, NSColor.white.withAlphaComponent(0.92), CGFloat(1.5))] {
+            shape.fillColor = nil
+            shape.strokeColor = color.cgColor
+            shape.lineWidth = width
+            shape.lineCap = .round
+            layer?.addSublayer(shape)
+        }
 
-        icon.symbolConfiguration = .init(pointSize: 20, weight: .semibold)
-        titleLabel.font = .systemFont(ofSize: 20, weight: .bold)
-        hintLabel.font = .systemFont(ofSize: 12, weight: .medium)
-        hintLabel.textColor = NSColor.white.withAlphaComponent(0.82)
+        // The system HUD look: dark frosted glass, white type.
+        label.material = .hudWindow
+        label.blendingMode = .behindWindow
+        label.state = .active
+        label.appearance = NSAppearance(named: .vibrantDark)
+        label.wantsLayer = true
+        label.layer?.cornerRadius = 10
+        label.layer?.masksToBounds = true
+        label.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(label)
 
-        let heading = NSStackView(views: [icon, titleLabel])
-        heading.spacing = 8
-        let stack = NSStackView(views: [heading, hintLabel])
-        stack.orientation = .vertical
-        stack.alignment = .centerX
-        stack.spacing = 4
+        icon.symbolConfiguration = .init(pointSize: 13, weight: .medium)
+        icon.contentTintColor = .white
+        titleLabel.font = .systemFont(ofSize: 14, weight: .semibold)
+        titleLabel.textColor = .white
+        hintLabel.font = .systemFont(ofSize: 12)
+        hintLabel.textColor = .secondaryLabelColor
+
+        let stack = NSStackView(views: [icon, titleLabel, hintLabel])
+        stack.spacing = 7
+        stack.setCustomSpacing(10, after: titleLabel)
         stack.translatesAutoresizingMaskIntoConstraints = false
-        pill.addSubview(stack)
+        label.addSubview(stack)
 
         NSLayoutConstraint.activate([
-            pill.centerXAnchor.constraint(equalTo: centerXAnchor),
-            pill.centerYAnchor.constraint(equalTo: centerYAnchor),
-            stack.leadingAnchor.constraint(equalTo: pill.leadingAnchor, constant: 18),
-            stack.trailingAnchor.constraint(equalTo: pill.trailingAnchor, constant: -18),
-            stack.topAnchor.constraint(equalTo: pill.topAnchor, constant: 11),
-            stack.bottomAnchor.constraint(equalTo: pill.bottomAnchor, constant: -11),
+            label.centerXAnchor.constraint(equalTo: centerXAnchor),
+            label.centerYAnchor.constraint(equalTo: centerYAnchor),
+            stack.leadingAnchor.constraint(equalTo: label.leadingAnchor, constant: 13),
+            stack.trailingAnchor.constraint(equalTo: label.trailingAnchor, constant: -14),
+            stack.topAnchor.constraint(equalTo: label.topAnchor, constant: 8),
+            stack.bottomAnchor.constraint(equalTo: label.bottomAnchor, constant: -8),
         ])
     }
 
     required init?(coder: NSCoder) { fatalError("not used") }
 
-    func apply(_ mode: KeyboardMode, color: NSColor) {
-        layer?.borderColor = color.cgColor
-        layer?.backgroundColor = color.withAlphaComponent(0.14).cgColor
+    override func layout() {
+        super.layout()
+        let rect = bounds.insetBy(dx: Metrics.inset, dy: Metrics.inset)
+        let path = CGPath(roundedRect: rect, cornerWidth: Metrics.cornerRadius,
+                          cornerHeight: Metrics.cornerRadius, transform: nil)
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        halo.path = path
+        line.path = path
+        CATransaction.commit()
+    }
+
+    func apply(_ mode: KeyboardMode) {
+        let dash: [NSNumber]? = mode.isDashed ? [7, 5] : nil
+        halo.lineDashPattern = dash
+        line.lineDashPattern = dash
         icon.image = NSImage(systemSymbolName: mode.symbolName, accessibilityDescription: nil)
-        icon.contentTintColor = color
         titleLabel.stringValue = mode.title
-        titleLabel.textColor = color
         hintLabel.stringValue = mode.hint
     }
 }
 
 /// Draws `KeyboardModeView` over a window's frame. Built on first use, like
-/// the other overlays, so a Dowey that never sees ⌥ owns no window for it.
+/// the other overlays, so a Dowey that never sees ⌘ owns no window for it.
 final class KeyboardModeOverlay {
 
     private var window: OverlayWindow?
@@ -224,7 +244,7 @@ final class KeyboardModeOverlay {
     /// `frame` is in Cocoa screen space. With `briefly`, the overlay fades
     /// on its own: the case where Globe was already let go by the time the
     /// window landed, so nothing else will take it down.
-    func show(_ mode: KeyboardMode, on frame: CGRect, color: NSColor, briefly: Bool = false) {
+    func show(_ mode: KeyboardMode, on frame: CGRect, briefly: Bool = false) {
         hideTimer?.invalidate()
         hideTimer = nil
         fadingOut = false
@@ -234,7 +254,7 @@ final class KeyboardModeOverlay {
         self.view = view
         self.window = window
 
-        view.apply(mode, color: color)
+        view.apply(mode)
         if window.isVisible, window.frame != frame {
             // Follows the window to where it snapped rather than jumping.
             NSAnimationContext.runAnimationGroup { context in
