@@ -6,6 +6,23 @@ the public shape — the gesture, the zone layouts, and the names and meanings
 of the settings — is stable: a breaking change to any of them takes a major
 bump.
 
+## [Unreleased]
+
+### Changed
+- **A calmer Settings window.** Sliders take one line each. Thickness,
+  destination opacity and corners sit behind **More options**. The design
+  gallery is a 2 × 2 grid with **Show at the pointer** above it, Eight zones
+  moved to Gesture, and the explanatory captions are gone.
+- The first tab is now **Ring**. Open at Login, updates and permissions moved
+  to a new **General** tab.
+- The tab highlight now always matches the page shown, even when a tab is
+  chosen from the keyboard or with VoiceOver.
+
+### Removed
+- The **Wedges** and **Blade** ring designs. Segments, Halo, Dots and Screen
+  Map remain, and anyone who had Wedges or Blade selected is moved to
+  Segments.
+
 ## [1.6.0] — 2026-11-21
 
 ### Added

@@ -75,11 +75,10 @@ final class RadialHUDView: NSView {
     /// size, so nothing is ever clipped by its own overlay.
     private static func outerReach(_ style: Style) -> CGFloat {
         switch style.design {
-        case .segments, .wedges: return style.ringRadius + style.activeRingThickness / 2
-        case .dots:              return style.ringRadius + dotRadius(for: style) * 1.7
-        case .blade:             return style.ringRadius + 6 + style.detail / 2
-        case .halo:              return style.ringRadius + style.activeRingThickness / 2 + style.detail
-        case .map:               return style.ringRadius * 1.2
+        case .segments: return style.ringRadius + style.activeRingThickness / 2
+        case .dots:     return style.ringRadius + dotRadius(for: style) * 1.7
+        case .halo:     return style.ringRadius + style.activeRingThickness / 2 + style.detail
+        case .map:      return style.ringRadius * 1.2
         }
     }
 
@@ -171,9 +170,7 @@ final class RadialHUDView: NSView {
         switch style.design {
         case .segments: buildArcs(gap: style.detail, cap: .round)
         case .halo:     buildHalo()
-        case .wedges:   buildWedges()
         case .dots:     buildDots()
-        case .blade:    buildBlades()
         case .map:      buildMap()
         }
 
@@ -219,26 +216,6 @@ final class RadialHUDView: NSView {
         buildArcs(gap: 3, cap: .round)
     }
 
-    private func buildWedges() {
-        let inner = style.triggerDistance + 8
-        for (zone, arc) in Zone.activeArcs {
-            let path = CGMutablePath()
-            path.addArc(center: center, radius: style.ringRadius,
-                        startAngle: (arc.start + 2) * .pi / 180,
-                        endAngle: (arc.end - 2) * .pi / 180, clockwise: false)
-            path.addArc(center: center, radius: inner,
-                        startAngle: (arc.end - 2) * .pi / 180,
-                        endAngle: (arc.start + 2) * .pi / 180, clockwise: true)
-            path.closeSubpath()
-
-            let shape = CAShapeLayer()
-            shape.path = path
-            shape.frame = bounds
-            layer?.addSublayer(shape)
-            zoneLayers.append((zone, arc, shape))
-        }
-    }
-
     private func buildDots() {
         for (zone, arc) in Zone.activeArcs {
             let shape = CAShapeLayer()
@@ -248,24 +225,6 @@ final class RadialHUDView: NSView {
             zoneLayers.append((zone, arc, shape))
         }
         // Paths are assigned in applyHighlight, where the live dot grows.
-    }
-
-    private func buildBlades() {
-        for (zone, arc) in Zone.activeArcs {
-            let angle = (arc.start + arc.end) / 2
-            let path = CGMutablePath()
-            path.move(to: point(atAngle: angle, radius: style.triggerDistance + 12))
-            path.addLine(to: point(atAngle: angle, radius: style.ringRadius + 6))
-
-            let shape = CAShapeLayer()
-            shape.path = path
-            shape.fillColor = nil
-            shape.lineCap = .round
-            shape.lineWidth = style.detail
-            shape.frame = bounds
-            layer?.addSublayer(shape)
-            zoneLayers.append((zone, arc, shape))
-        }
     }
 
     private func buildMap() {
@@ -347,13 +306,6 @@ final class RadialHUDView: NSView {
                 shape.shadowOpacity = style.detail > 0 ? 0.9 : 0
                 shape.shadowPath = shape.path
 
-            case .wedges:
-                shape.fillColor = on
-                    ? resolved(style.tint.withAlphaComponent(style.detail))
-                    : resolved(NSColor.white.withAlphaComponent(0.09))
-                shape.strokeColor = on ? accent : resolved(NSColor.white.withAlphaComponent(0.16))
-                shape.lineWidth = on ? 1.5 : 1
-
             case .dots:
                 let base = RadialHUDView.dotRadius(for: style)
                 let r = on ? base * 1.7 : base
@@ -361,11 +313,6 @@ final class RadialHUDView: NSView {
                 shape.path = CGPath(ellipseIn: CGRect(x: p.x - r, y: p.y - r,
                                                       width: r * 2, height: r * 2), transform: nil)
                 shape.fillColor = on ? accent : dim
-
-            case .blade:
-                shape.isHidden = !on
-                shape.strokeColor = accent
-                shape.lineWidth = style.detail
 
             case .map:
                 shape.isHidden = !on

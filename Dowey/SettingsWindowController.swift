@@ -32,23 +32,25 @@ private final class SettingsWindow: NSWindow {
 /// Which tab the window is showing. Owned by the controller, because the
 /// toolbar that switches tabs is AppKit's and the pages are SwiftUI's.
 final class SettingsNavigation: ObservableObject {
-    @Published var tab: SettingsTab = .general
+    @Published var tab: SettingsTab = .ring
 }
 
 enum SettingsTab: String, CaseIterable {
-    case general, shortcuts
+    case ring, shortcuts, general
 
     var title: String {
         switch self {
-        case .general:   return "General"
+        case .ring:      return "Ring"
         case .shortcuts: return "Shortcuts"
+        case .general:   return "General"
         }
     }
 
     var symbolName: String {
         switch self {
-        case .general:   return "circle.circle"
+        case .ring:      return "circle.circle"
         case .shortcuts: return "globe"
+        case .general:   return "gearshape"
         }
     }
 
@@ -198,5 +200,8 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate, NSTo
         guard let tab = SettingsTab(rawValue: sender.itemIdentifier.rawValue) else { return }
         navigation.tab = tab
         window?.title = tab.title
+        // A click selects the item on its own; keyboard and VoiceOver presses
+        // do not, and the highlight must never disagree with the page.
+        window?.toolbar?.selectedItemIdentifier = sender.itemIdentifier
     }
 }
