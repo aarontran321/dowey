@@ -433,10 +433,9 @@ final class RadialHUDController {
     /// Anchors the ring on the gesture origin — not on the live cursor — because
     /// the hollow center represents the deadzone, which is measured from origin.
     ///
-    /// The style is read here, once per gesture: a settings change mid-hold
-    /// cannot resize the ring out from under the user.
-    func show(at origin: CGPoint) {
-        let style = Settings.shared.style
+    /// `style` is read by the caller once per gesture: a settings change
+    /// mid-hold cannot resize the ring out from under the user.
+    func show(at origin: CGPoint, style: Style) {
         guard style.showRing else { return }
 
         let (window, view) = makeWindowIfNeeded(style)

@@ -95,6 +95,11 @@ final class GlobalEventMonitor {
     private let hud = RadialHUDController()
     private let preview = PreviewOverlayController()
 
+    /// Read from the store once per gesture, at key-down. Building a `Style`
+    /// resolves the tint color, so doing it on every zone change would be
+    /// work repeated for an answer that cannot change mid-hold.
+    private var style = Style.default
+
     /// `NSScreen.screens` allocates a bridged array on every access. During a
     /// sweep the cursor almost always stays on one display, so the lookup is
     /// cached for the gesture and redone only when the cursor actually leaves it.
@@ -136,11 +141,12 @@ final class GlobalEventMonitor {
         flashTimer = nil
         let origin = NSEvent.mouseLocation
         state = .armed(origin: origin)
+        style = Settings.shared.style
 
         // Shown immediately with the center circle lit and the full-screen
         // destination already outlined, so the maximize target gets the same
         // preview treatment as the eight directional zones.
-        hud.show(at: origin)
+        hud.show(at: origin, style: style)
         showMaximizePreview(near: origin)
 
         gestureMonitors = [
@@ -161,12 +167,18 @@ final class GlobalEventMonitor {
             self?.cancel()
         }
 
-        releaseWatchdog = Timer.scheduledTimer(withTimeInterval: 0.15, repeats: true) { [weak self] _ in
+        let watchdog = Timer(timeInterval: 0.15, repeats: true) { [weak self] _ in
             guard let self, self.state.isActive else { return }
             if !CGEventSource.keyState(.combinedSessionState, key: Self.globeKeyCode) {
                 self.cancel()
             }
         }
+        // A safety net, not a clock: firing a little late costs nothing, and
+        // the slack lets the system fold these wakeups into ones it was
+        // already going to take.
+        watchdog.tolerance = 0.05
+        RunLoop.main.add(watchdog, forMode: .common)
+        releaseWatchdog = watchdog
     }
 
     // MARK: - Tracking
@@ -193,7 +205,7 @@ final class GlobalEventMonitor {
         hud.update(activeZone: zone)
 
         if let screen = screen(containing: location) {
-            preview.show(rect: zone.rect(in: screen.visibleFrame))
+            preview.show(rect: zone.rect(in: screen.visibleFrame), style: style)
         }
     }
 
@@ -207,7 +219,7 @@ final class GlobalEventMonitor {
     /// would produce.
     private func showMaximizePreview(near point: CGPoint) {
         guard let screen = screen(containing: point) else { return }
-        preview.show(rect: SnapTarget.maximize.rect(in: screen.visibleFrame))
+        preview.show(rect: SnapTarget.maximize.rect(in: screen.visibleFrame), style: style)
     }
 
     // MARK: - Commit / cancel
@@ -241,13 +253,16 @@ final class GlobalEventMonitor {
         let origin = state.origin ?? NSEvent.mouseLocation
         teardown()
 
-        hud.show(at: origin)
+        hud.show(at: origin, style: Settings.shared.style)
         if case .zone(let zone) = target { hud.update(activeZone: zone) }
 
-        flashTimer = Timer.scheduledTimer(withTimeInterval: 0.7, repeats: false) { [weak self] _ in
+        let timer = Timer(timeInterval: 0.7, repeats: false) { [weak self] _ in
             self?.hud.hide()
             self?.flashTimer = nil
         }
+        timer.tolerance = 0.1
+        RunLoop.main.add(timer, forMode: .common)
+        flashTimer = timer
     }
 
     private func cancel() {

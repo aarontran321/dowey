@@ -5,8 +5,9 @@
 //  Globe + arrow keys. Unlike the gesture, this has to *consume* what it
 //  handles: Globe + arrow is Home / End / Page Up / Page Down to every app, so
 //  an observe-only monitor would snap the window and scroll the document under
-//  it. That takes a CGEventTap, which is the one place Dowey sits in the
-//  keystroke path — so the callback does as little as possible and gets out.
+//  it. That takes a CGEventTap, the one place Dowey sits in the keystroke
+//  path, so it sits there only while Globe is held. At rest a second tap sees
+//  modifier changes and nothing else; typing never reaches Dowey at all.
 //
 
 import AppKit
@@ -30,70 +31,101 @@ final class GlobeShortcuts {
     /// is "select to start of line" and stays that way.
     private static let otherModifiers: CGEventFlags = [.maskCommand, .maskAlternate, .maskControl, .maskShift]
 
-    private var tap: CFMachPort?
-    private var runLoopSource: CFRunLoopSource?
+    /// Always installed: sees modifier changes only, never ordinary typing.
+    /// Its one job is to switch `keyTap` on the moment Globe goes down.
+    private var trigger: Tap?
+
+    /// Key-down / key-up. Installed with the trigger but *enabled* only while
+    /// Globe is held (or a swallowed key is still waiting for its key-up), so
+    /// the rest of the time no keystroke on the system passes through Dowey.
+    ///
+    /// Taps on one event stream run in order, and the trigger enables this
+    /// one from inside its own callback, before it returns — so the first
+    /// arrow after Globe is always seen. No race with a separate monitor.
+    private var keyTap: Tap?
 
     /// Key codes whose key-down was eaten, so their key-up (and any repeats)
     /// are eaten too — even if Globe is let go first. An app that sees a
     /// key-up with no key-down is at best confused.
     private var swallowed: Set<Int64> = []
 
+    private var globeDown = false
+
     /// Called before a snap so the gesture can hand its ring over to the
     /// shortcut: Globe is already down, so the HUD is on screen and would
     /// otherwise maximize on release.
     var willSnap: ((SnapTarget) -> Void)?
 
-    var isRunning: Bool { tap != nil }
+    var isRunning: Bool { trigger != nil && keyTap != nil }
 
     // MARK: - Lifecycle
 
     /// Fails quietly without Accessibility; call again once it is granted.
     func start() {
-        guard tap == nil else { return }
+        guard !isRunning else { return }
+        stop()
 
-        let mask = CGEventMask(1 << CGEventType.keyDown.rawValue)
-                 | CGEventMask(1 << CGEventType.keyUp.rawValue)
-
-        guard let tap = CGEvent.tapCreate(tap: .cgSessionEventTap,
-                                          place: .headInsertEventTap,
-                                          options: .defaultTap,
-                                          eventsOfInterest: mask,
-                                          callback: globeShortcutsCallback,
-                                          userInfo: Unmanaged.passUnretained(self).toOpaque()) else {
+        let context = Unmanaged.passUnretained(self).toOpaque()
+        guard let trigger = Tap(mask: CGEventMask(1 << CGEventType.flagsChanged.rawValue),
+                                callback: globeTriggerCallback, context: context),
+              let keyTap = Tap(mask: CGEventMask(1 << CGEventType.keyDown.rawValue)
+                                   | CGEventMask(1 << CGEventType.keyUp.rawValue),
+                               callback: globeShortcutsCallback, context: context) else {
             NSLog("Dowey: could not install the keyboard shortcut tap — Accessibility not granted?")
             return
         }
 
-        let source = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
-        CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)
-        CGEvent.tapEnable(tap: tap, enable: true)
-
-        self.tap = tap
-        self.runLoopSource = source
+        self.trigger = trigger
+        self.keyTap = keyTap
+        // Globe may already be down if this runs mid-press.
+        globeDown = CGEventSource.keyState(.combinedSessionState, key: Self.globeKeyCode)
+        trigger.setEnabled(true)
+        updateKeyTap()
     }
 
     func stop() {
-        if let tap { CGEvent.tapEnable(tap: tap, enable: false) }
-        if let runLoopSource { CFRunLoopRemoveSource(CFRunLoopGetMain(), runLoopSource, .commonModes) }
-        if let tap { CFMachPortInvalidate(tap) }
-        tap = nil
-        runLoopSource = nil
+        trigger?.invalidate()
+        keyTap?.invalidate()
+        trigger = nil
+        keyTap = nil
         swallowed.removeAll()
+        globeDown = false
+    }
+
+    private func updateKeyTap() {
+        keyTap?.setEnabled(globeDown || !swallowed.isEmpty)
     }
 
     // MARK: - Events
+
+    fileprivate func handleTrigger(_ type: CGEventType, _ event: CGEvent) {
+        switch type {
+        case .tapDisabledByTimeout, .tapDisabledByUserInput:
+            trigger?.setEnabled(true)
+        case .flagsChanged:
+            guard event.getIntegerValueField(.keyboardEventKeycode) == Int64(Self.globeKeyCode) else { return }
+            // Same rule as the gesture: down iff the fn flag survives the event.
+            globeDown = event.flags.contains(.maskSecondaryFn)
+            updateKeyTap()
+        default:
+            break
+        }
+    }
 
     /// Returns nil to swallow the event.
     fileprivate func handle(_ type: CGEventType, _ event: CGEvent) -> CGEvent? {
         switch type {
         case .tapDisabledByTimeout, .tapDisabledByUserInput:
-            // The system switches a slow tap off; switch it straight back on.
-            if let tap { CGEvent.tapEnable(tap: tap, enable: true) }
+            // The system switches a slow tap off; put it back the way it
+            // should be rather than unconditionally on.
+            updateKeyTap()
             return event
 
         case .keyUp:
             let code = event.getIntegerValueField(.keyboardEventKeycode)
-            return swallowed.remove(code) == nil ? event : nil
+            guard swallowed.remove(code) != nil else { return event }
+            updateKeyTap()
+            return nil
 
         case .keyDown:
             let code = event.getIntegerValueField(.keyboardEventKeycode)
@@ -131,6 +163,50 @@ final class GlobeShortcuts {
             }
         }
     }
+}
+
+/// One session event tap and its run-loop source, created disabled.
+private final class Tap {
+
+    private let port: CFMachPort
+    private let source: CFRunLoopSource
+
+    init?(mask: CGEventMask, callback: CGEventTapCallBack, context: UnsafeMutableRawPointer) {
+        guard let port = CGEvent.tapCreate(tap: .cgSessionEventTap,
+                                           place: .headInsertEventTap,
+                                           options: .defaultTap,
+                                           eventsOfInterest: mask,
+                                           callback: callback,
+                                           userInfo: context) else { return nil }
+        CGEvent.tapEnable(tap: port, enable: false)
+        self.port = port
+        source = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, port, 0)
+        CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)
+    }
+
+    /// Asks the tap itself rather than a cached flag, so a tap the system
+    /// switched off behind our back is noticed and put right.
+    func setEnabled(_ on: Bool) {
+        guard CGEvent.tapIsEnabled(tap: port) != on else { return }
+        CGEvent.tapEnable(tap: port, enable: on)
+    }
+
+    func invalidate() {
+        CGEvent.tapEnable(tap: port, enable: false)
+        CFRunLoopRemoveSource(CFRunLoopGetMain(), source, .commonModes)
+        CFMachPortInvalidate(port)
+    }
+}
+
+private func globeTriggerCallback(proxy: CGEventTapProxy,
+                                  type: CGEventType,
+                                  event: CGEvent,
+                                  userInfo: UnsafeMutableRawPointer?) -> Unmanaged<CGEvent>? {
+    if let userInfo {
+        Unmanaged<GlobeShortcuts>.fromOpaque(userInfo).takeUnretainedValue().handleTrigger(type, event)
+    }
+    // Never consumes: modifier changes always reach their apps.
+    return Unmanaged.passUnretained(event)
 }
 
 private func globeShortcutsCallback(proxy: CGEventTapProxy,

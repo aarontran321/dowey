@@ -167,6 +167,8 @@ enum WindowEngine {
             }
         }
 
+        // Sampling, not timing: a few ms of slack lets the wakeups coalesce.
+        timer.tolerance = interval / 5
         // `.common` so a menu tracking or a resize loop cannot stall the exit.
         RunLoop.main.add(timer, forMode: .common)
     }

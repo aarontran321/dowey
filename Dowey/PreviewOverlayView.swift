@@ -79,8 +79,8 @@ final class PreviewOverlayController {
     }
 
     /// `rect` is in Cocoa screen coordinates and becomes the window's frame.
-    func show(rect: CGRect) {
-        let style = Settings.shared.style
+    /// `style` is the gesture's snapshot, taken once at key-down.
+    func show(rect: CGRect, style: Style) {
         guard style.showPreview else { return }
 
         let (window, view) = makeWindowIfNeeded(style)

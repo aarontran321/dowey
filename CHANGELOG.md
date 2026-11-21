@@ -24,6 +24,17 @@ bump.
 ### Changed
 - The version number moved from the bottom of Settings into the update row.
 
+### Performance
+- **Typing no longer passes through Dowey.** The Globe + arrow shortcut tap
+  was in the path of every keystroke on the system; it is now switched on only
+  while Globe is held. At rest a modifier-only tap watches for Globe and
+  nothing else.
+- Zone lookup, which runs on every mouse move during a gesture, no longer
+  allocates: the zone tables are built once. 2.4x faster per lookup.
+- The gesture reads its style once at key-down instead of on every zone change.
+- The gesture's timers carry tolerance so their wakeups can coalesce, and the
+  Globe-release watchdog keeps running during menu tracking.
+
 ## [1.4.3] — 2026-11-13
 
 ### Changed

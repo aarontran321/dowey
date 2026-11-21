@@ -7,7 +7,7 @@ A tiny, native macOS window snapper. Hold the **Globe (🌐 / fn)** key, flick t
 - Escape → cancel, nothing moves.
 - Six ring designs, each with its own parameter, chosen from a gallery next to a live preview. Nothing to save; every control commits as you touch it.
 - Updates itself: when a new release is out, the menu offers it and one click installs it.
-- No Dock icon, no polling, no third-party dependencies. Idles at 0.0% CPU.
+- No Dock icon, no idle polling, no third-party dependencies. Idles at 0.0% CPU, and ordinary typing never passes through it.
 
 Requires macOS 13 or later. Not sandboxed — it moves other apps' windows, which the App Sandbox forbids.
 
@@ -306,9 +306,13 @@ The app spends its life in the first row: a menu-bar item, a `flagsChanged`
 monitor and nothing else. 0.00029% of one core is about 3 µs of CPU per second.
 A global `NSEvent` monitor registered only for `flagsChanged` is not woken by
 mouse movement, so idle cost does not depend on what the pointer is doing.
-Those figures predate 1.4.0's Globe + arrow shortcuts, which add a key-down /
-key-up event tap: it wakes once per keystroke, and turning the shortcuts off in
-Settings → Shortcuts removes it.
+Those figures predate 1.4.0's Globe + arrow shortcuts. Their key-down / key-up
+event tap used to wake on every keystroke on the system; it is now enabled only
+while Globe is held. At rest a second tap sees modifier changes (Shift, ⌘,
+Globe…) and nothing else, and switches the key tap on from inside its own
+callback — taps on one event stream run in order, so the first arrow after
+Globe is never missed. Turning the shortcuts off in Settings → Shortcuts
+removes both taps.
 
 **Opening Settings costs about 26 MB and closing it returns about 5.**  Dowey
 drops the window and its whole SwiftUI hierarchy on close, which is what those
@@ -367,9 +371,12 @@ straight back to `0.0` the moment you release. Memory should stay flat across
 many gestures — Activity Monitor's Memory column reads about **10 MB** if you
 have not opened Settings this launch, and about **31 MB** if you have.
 
-Why it costs nothing at rest: there is no timer anywhere in the codebase. While
-idle, exactly one `flagsChanged` monitor (plus, with shortcuts on, one keyboard
-event tap) is installed and both overlay windows are
+Why it costs nothing at rest: no timer runs while idle. The only timers are a
+Globe-release watchdog that lives for the length of a gesture, the brief ring
+flash after a shortcut, and the frame sampler used when leaving macOS full
+screen — each with tolerance set so the system can coalesce its wakeups. While
+idle, exactly one `flagsChanged` monitor (plus, with shortcuts on, one
+modifier-only event tap) is installed and both overlay windows are
 ordered out of the window server. The mouse-move and Escape monitors are created
 on Globe key-down and removed on release or cancel, so no mouse handler runs
 between gestures.

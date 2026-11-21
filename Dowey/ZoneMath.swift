@@ -98,24 +98,33 @@ enum Zone: CaseIterable {
     /// every arc has `end > start`; callers compare against the `+360` alias.
     static func arcs(in layout: ZoneLayout) -> [(zone: Zone, arc: Arc)] {
         switch layout {
-        case .eight:
-            return [(.right,       (335, 385)),
-                    (.topRight,    (25, 70)),
-                    (.top,         (70, 110)),
-                    (.topLeft,     (110, 155)),
-                    (.left,        (155, 205)),
-                    (.bottomLeft,  (205, 250)),
-                    (.bottom,      (250, 290)),
-                    (.bottomRight, (290, 335))]
-        case .six:
-            return [(.right,       (315, 405)),
-                    (.topRight,    (45, 90)),
-                    (.topLeft,     (90, 135)),
-                    (.left,        (135, 225)),
-                    (.bottomLeft,  (225, 270)),
-                    (.bottomRight, (270, 315))]
+        case .eight: return eightArcs
+        case .six:   return sixArcs
         }
     }
+
+    // Built once. `forAngle` runs on every mouse-moved event outside the
+    // deadzone, and a literal in `arcs(in:)` would allocate a fresh array each
+    // time; these are shared, so a lookup allocates nothing.
+    private static let eightArcs: [(zone: Zone, arc: Arc)] = [
+        (.right,       (335, 385)),
+        (.topRight,    (25, 70)),
+        (.top,         (70, 110)),
+        (.topLeft,     (110, 155)),
+        (.left,        (155, 205)),
+        (.bottomLeft,  (205, 250)),
+        (.bottom,      (250, 290)),
+        (.bottomRight, (290, 335)),
+    ]
+
+    private static let sixArcs: [(zone: Zone, arc: Arc)] = [
+        (.right,       (315, 405)),
+        (.topRight,    (45, 90)),
+        (.topLeft,     (90, 135)),
+        (.left,        (135, 225)),
+        (.bottomLeft,  (225, 270)),
+        (.bottomRight, (270, 315)),
+    ]
 
     /// The live table, for the layout the user has chosen.
     static var activeArcs: [(zone: Zone, arc: Arc)] { arcs(in: ZoneMath.layout) }
