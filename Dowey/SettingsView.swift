@@ -371,7 +371,7 @@ private struct ShortcutsView: View {
                             .toggleStyle(.dowey)
                     }
                     .padding(.top, 12)
-                    PanelFootnote("Brings the nearest window that way to the front. Keep holding 🌐 and press an arrow to snap it.")
+                    PanelFootnote("Orange outline: picking a window. Let go of ⌥ and it turns your ring color: arrows now move it.")
                 }
                 .disabled(!settings.globeShortcutsEnabled)
                 .opacity(settings.globeShortcutsEnabled ? 1 : 0.45)

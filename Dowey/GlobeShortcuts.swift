@@ -61,14 +61,22 @@ final class GlobeShortcuts {
     /// otherwise reach the window that had focus before it.
     private var selected: AXUIElement?
 
-    /// Called before a snap so the gesture can hand its ring over to the
-    /// shortcut: Globe is already down, so the HUD is on screen and would
-    /// otherwise maximize on release.
-    var willSnap: ((SnapTarget) -> Void)?
+    /// Called before the keyboard acts — a snap, a pick, or entering Pick —
+    /// so the gesture steps aside: Globe is already down, so its ring is on
+    /// screen and would otherwise maximize on release.
+    var willAct: (() -> Void)?
 
-    /// Called with a picked window's frame, in Cocoa screen space, so the
-    /// gesture can step aside and outline it.
-    var didSelect: ((CGRect) -> Void)?
+    /// ⌥ as of the last modifier change. With Globe down it switches between
+    /// Pick (held) and Move (let go).
+    private var optionDown = false
+
+    /// What the window outline is showing, or nil when there is none.
+    private var mode: KeyboardMode?
+    private let overlay = KeyboardModeOverlay()
+
+    /// Takes the outline down if Globe's release is ever missed. Runs only
+    /// while an outline is up.
+    private var releaseWatchdog: Timer?
 
     /// Globe went down (true) or up (false). While this tap is running it is
     /// the gesture's trigger too, so a modifier change on the system wakes
@@ -113,6 +121,7 @@ final class GlobeShortcuts {
         heldArrows.removeAll()
         selected = nil
         globeDown = false
+        endKeyboardMode()
     }
 
     private func updateKeyTap() {
@@ -126,6 +135,13 @@ final class GlobeShortcuts {
         case .tapDisabledByTimeout, .tapDisabledByUserInput:
             trigger?.setEnabled(true)
         case .flagsChanged:
+            let alt = event.flags.contains(.maskAlternate)
+            if alt != optionDown {
+                optionDown = alt
+                if globeDown {
+                    DispatchQueue.main.async { [weak self] in self?.optionChanged(alt) }
+                }
+            }
             guard event.getIntegerValueField(.keyboardEventKeycode) == Int64(Self.globeKeyCode) else { return }
             // Down iff the fn flag survives the event.
             // Forwarded even when it repeats what was last seen: a release the
@@ -141,6 +157,11 @@ final class GlobeShortcuts {
             heldArrows.removeAll()
             selected = nil
             updateKeyTap()
+            DispatchQueue.main.async { [weak self] in
+                // Globe pressed with ⌥ already down goes straight into Pick.
+                if isDown, alt { self?.optionChanged(true) }
+                if !isDown { self?.endKeyboardMode() }
+            }
         default:
             break
         }
@@ -212,13 +233,16 @@ final class GlobeShortcuts {
     }
 
     private func snap(to target: SnapTarget) {
-        willSnap?(target)
+        willAct?()
         // The window's own screen, not the cursor's: a keyboard shortcut has
         // no pointer in it, and the window should not jump displays.
         let window = selected
         let anchor = window.flatMap(Self.center(of:)) ?? WindowEngine.focusedWindowCenter() ?? NSEvent.mouseLocation
-        WindowEngine.snap(target, at: anchor, window: window) { result in
-            if case .failure(let error) = result {
+        WindowEngine.snap(target, at: anchor, window: window) { [weak self] result in
+            switch result {
+            case .success(let frame):
+                self?.present(.move, cocoaFrame: frame)
+            case .failure(let error):
                 NSLog("Dowey: shortcut to \(target.displayName) failed — \(error.description)")
             }
         }
@@ -238,6 +262,7 @@ extension GlobeShortcuts {
     /// picked last in this hold, else the focused window, else the pointer —
     /// and outlines it. Beeps when there is nothing that way.
     fileprivate func select(toward direction: Direction) {
+        willAct?()
         let current: CGRect
         if let window = selected ?? WindowEngine.focusedWindow(), let frame = WindowEngine.frame(of: window) {
             current = frame
@@ -251,10 +276,57 @@ extension GlobeShortcuts {
             guard let window = WindowEngine.element(for: listed[index]) else { continue }
             WindowEngine.focus(window)
             selected = window
-            didSelect?(WindowEngine.cocoaToAccessibility(listed[index].frame))
+            present(.pick, cocoaFrame: WindowEngine.cocoaToAccessibility(listed[index].frame))
             return
         }
         NSSound.beep()
+    }
+
+    // MARK: Pick and Move
+
+    /// ⌥ went down or up while Globe is held. Down shows Pick on the window
+    /// that would be picked from; up turns whatever is outlined into Move.
+    fileprivate func optionChanged(_ down: Bool) {
+        guard globeDown, Settings.shared.windowSelection else { return }
+        if down {
+            willAct?()
+            presentOnCurrentWindow(.pick)
+        } else if mode == .pick {
+            presentOnCurrentWindow(.move)
+        }
+    }
+
+    private func presentOnCurrentWindow(_ mode: KeyboardMode) {
+        guard let window = selected ?? WindowEngine.focusedWindow(),
+              let frame = WindowEngine.frame(of: window) else {
+            self.mode = mode
+            return
+        }
+        present(mode, cocoaFrame: WindowEngine.cocoaToAccessibility(frame))
+    }
+
+    /// Outlines `cocoaFrame` in `mode`'s color. If Globe is already up — a
+    /// snap that landed after the release — it shows briefly and fades.
+    fileprivate func present(_ mode: KeyboardMode, cocoaFrame: CGRect) {
+        self.mode = mode
+        let tint = Settings.shared.tintColor
+        overlay.show(mode, on: cocoaFrame, color: mode.color(tint: tint), briefly: !globeDown)
+        guard globeDown, releaseWatchdog == nil else { return }
+        let watchdog = Timer(timeInterval: 0.2, repeats: true) { [weak self] _ in
+            if !CGEventSource.keyState(.combinedSessionState, key: GlobeShortcuts.globeKeyCode) {
+                self?.endKeyboardMode()
+            }
+        }
+        watchdog.tolerance = 0.05
+        RunLoop.main.add(watchdog, forMode: .common)
+        releaseWatchdog = watchdog
+    }
+
+    fileprivate func endKeyboardMode() {
+        releaseWatchdog?.invalidate()
+        releaseWatchdog = nil
+        mode = nil
+        overlay.hide()
     }
 
     fileprivate static func center(of window: AXUIElement) -> CGPoint? {

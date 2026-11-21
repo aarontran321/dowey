@@ -6,6 +6,15 @@ the public shape — the gesture, the zone layouts, and the names and meanings
 of the settings — is stable: a breaking change to any of them takes a major
 bump.
 
+## [Unreleased]
+
+### Changed
+- **You can always tell Pick from Move.** Holding 🌐 + ⌥ outlines the window
+  in orange with a **Pick** label, as soon as ⌥ goes down. Let go of ⌥ and the
+  outline turns your ring color with a **Move** label. Snaps from the keyboard
+  move the outline with the window instead of flashing the ring at the
+  pointer, and letting go of 🌐 clears it.
+
 ## [1.6.2] — 2026-11-21
 
 ### Performance

@@ -63,8 +63,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     // MARK: - Shortcuts
 
     private func setUpShortcuts() {
-        shortcuts.willSnap = { [weak self] target in self?.monitor.flash(target) }
-        shortcuts.didSelect = { [weak self] frame in self?.monitor.outlineSelection(frame) }
+        shortcuts.willAct = { [weak self] in self?.monitor.stepAside() }
         shortcuts.globeChanged = { [weak self] isDown in self?.monitor.globeChanged(isDown: isDown) }
 
         Settings.shared.$globeShortcutsEnabled
