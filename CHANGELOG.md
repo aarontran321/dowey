@@ -6,7 +6,7 @@ the public shape — the gesture, the zone layouts, and the names and meanings
 of the settings — is stable: a breaking change to any of them takes a major
 bump.
 
-## [Unreleased]
+## [1.5.0] — 2026-11-21
 
 ### Added
 - **Dowey updates itself.** When a newer release is out, the menu bar menu
