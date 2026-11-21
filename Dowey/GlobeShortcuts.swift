@@ -70,6 +70,13 @@ final class GlobeShortcuts {
     /// gesture can step aside and outline it.
     var didSelect: ((CGRect) -> Void)?
 
+    /// Globe went down (true) or up (false). While this tap is running it is
+    /// the gesture's trigger too, so a modifier change on the system wakes
+    /// Dowey once rather than once per listener. Delivered on a later
+    /// main-queue turn: the tap returns at once and no modifier waits on the
+    /// ring being drawn.
+    var globeChanged: ((Bool) -> Void)?
+
     var isRunning: Bool { trigger != nil && keyTap != nil }
 
     // MARK: - Lifecycle
@@ -120,8 +127,15 @@ final class GlobeShortcuts {
             trigger?.setEnabled(true)
         case .flagsChanged:
             guard event.getIntegerValueField(.keyboardEventKeycode) == Int64(Self.globeKeyCode) else { return }
-            // Same rule as the gesture: down iff the fn flag survives the event.
-            globeDown = event.flags.contains(.maskSecondaryFn)
+            // Down iff the fn flag survives the event.
+            // Forwarded even when it repeats what was last seen: a release the
+            // system swallowed must not make the next press look like a repeat.
+            // The gesture ignores a down while armed and an up while idle.
+            let isDown = event.flags.contains(.maskSecondaryFn)
+            globeDown = isDown
+            if let globeChanged {
+                DispatchQueue.main.async { globeChanged(isDown) }
+            }
             // Each Globe hold starts fresh: held arrows whose key-up was
             // missed, and the window picked last time, belong to the last one.
             heldArrows.removeAll()

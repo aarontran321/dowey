@@ -68,10 +68,14 @@ final class GlobalEventMonitor {
 
     private var state: State = .idle
 
-    /// Always running: one flagsChanged monitor. This is the app's entire idle
-    /// footprint — everything else is installed on key-down and torn down on
-    /// key-up, so no mouse handler runs while idle.
+    /// One flagsChanged monitor, the app's entire idle footprint — everything
+    /// else is installed on key-down and torn down on key-up, so no mouse
+    /// handler runs while idle. Absent while the shortcuts' modifier tap is
+    /// running and reporting Globe instead (`useExternalTrigger`): two
+    /// listeners would wake Dowey twice for every modifier press on the system.
     private var triggerMonitor: EventMonitorPair?
+    private var externalTrigger = false
+    private var started = false
 
     /// Installed only between key-down and commit/cancel.
     private var gestureMonitors: [EventMonitorPair] = []
@@ -111,16 +115,39 @@ final class GlobalEventMonitor {
     // MARK: - Lifecycle
 
     func start() {
-        guard triggerMonitor == nil else { return }
-        triggerMonitor = EventMonitorPair(mask: [.flagsChanged]) { [weak self] event in
-            self?.handleFlagsChanged(event)
-        }
+        started = true
+        updateTriggerMonitor()
     }
 
     func stop() {
+        started = false
         cancel()
-        triggerMonitor?.stop()
-        triggerMonitor = nil
+        updateTriggerMonitor()
+    }
+
+    /// Hands the trigger to someone else's Globe reports (`globeChanged`), or
+    /// takes it back.
+    func useExternalTrigger(_ external: Bool) {
+        externalTrigger = external
+        updateTriggerMonitor()
+    }
+
+    /// Globe went down or up, as reported by the external trigger.
+    func globeChanged(isDown: Bool) {
+        guard externalTrigger else { return }
+        handleGlobe(isDown: isDown)
+    }
+
+    private func updateTriggerMonitor() {
+        let wanted = started && !externalTrigger
+        if wanted, triggerMonitor == nil {
+            triggerMonitor = EventMonitorPair(mask: [.flagsChanged]) { [weak self] event in
+                self?.handleFlagsChanged(event)
+            }
+        } else if !wanted, let monitor = triggerMonitor {
+            monitor.stop()
+            triggerMonitor = nil
+        }
     }
 
     // MARK: - Trigger
@@ -130,8 +157,10 @@ final class GlobalEventMonitor {
 
         // flagsChanged carries no up/down flag — the key is down iff `.function`
         // is still present in the post-event modifier set.
-        let isDown = event.modifierFlags.contains(.function)
+        handleGlobe(isDown: event.modifierFlags.contains(.function))
+    }
 
+    private func handleGlobe(isDown: Bool) {
         switch (isDown, state.isActive) {
         case (true, false):  arm()
         case (false, true):  commit()

@@ -6,6 +6,15 @@ the public shape — the gesture, the zone layouts, and the names and meanings
 of the settings — is stable: a breaking change to any of them takes a major
 bump.
 
+## [Unreleased]
+
+### Performance
+- **Half the work per modifier key.** The gesture and the keyboard shortcuts
+  now share one listener for modifier keys instead of each having their own,
+  so pressing ⌘, ⇧ or ⌥ anywhere on the Mac wakes Dowey once instead of
+  twice. Measured over 200 presses: about 55% less CPU and almost no extra
+  wakeups. Modifier presses also never wait on the ring being drawn.
+
 ## [1.6.1] — 2026-11-21
 
 ### Changed

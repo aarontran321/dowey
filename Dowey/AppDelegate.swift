@@ -55,6 +55,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        monitor.useExternalTrigger(false)
         shortcuts.stop()
         monitor.stop()
     }
@@ -64,10 +65,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func setUpShortcuts() {
         shortcuts.willSnap = { [weak self] target in self?.monitor.flash(target) }
         shortcuts.didSelect = { [weak self] frame in self?.monitor.outlineSelection(frame) }
+        shortcuts.globeChanged = { [weak self] isDown in self?.monitor.globeChanged(isDown: isDown) }
 
         Settings.shared.$globeShortcutsEnabled
             .sink { [weak self] enabled in
-                enabled ? self?.shortcuts.start() : self?.shortcuts.stop()
+                guard let self else { return }
+                enabled ? self.shortcuts.start() : self.shortcuts.stop()
+                self.monitor.useExternalTrigger(self.shortcuts.isRunning)
             }
             .store(in: &cancellables)
 
@@ -78,6 +82,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             .sink { [weak self] _ in
                 guard let self, Settings.shared.globeShortcutsEnabled, !self.shortcuts.isRunning else { return }
                 self.shortcuts.start()
+                self.monitor.useExternalTrigger(self.shortcuts.isRunning)
             }
             .store(in: &cancellables)
     }
