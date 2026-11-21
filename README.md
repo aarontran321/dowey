@@ -5,7 +5,7 @@ A tiny, native macOS window snapper. Hold the **Globe (🌐 / fn)** key, flick t
 - Six directional zones (left/right halves + four quarters), selected by mouse *direction*, not position — or eight, with Top and Bottom halves, if you switch them on.
 - Release without moving → maximize to the visible screen area.
 - Escape → cancel, nothing moves.
-- Four ring designs, each with its own parameter, chosen from a gallery next to a live preview. Nothing to save; every control commits as you touch it.
+- Six ring designs, each with its own parameter, chosen from a gallery next to a live preview. Nothing to save; every control commits as you touch it.
 - No Dock icon, no polling, no third-party dependencies. Idles at 0.0% CPU.
 
 Requires macOS 13 or later. Not sandboxed — it moves other apps' windows, which the App Sandbox forbids.
@@ -213,18 +213,20 @@ on a dirty tree, off `main`, or with nothing under `[Unreleased]`.
 
 Click the circle in the menu bar → **Settings…** (or ⌘, with the window focused; launching Dowey again opens it too).
 
-Three tabs: **Ring**, **Shortcuts** and **General**. The Ring tab has two even columns. On the left, what it looks like: the live preview on top, then the ring on/off switch and the design gallery. On the right, the knobs for whatever is selected, one line each; the ones most people set once (Thickness, destination Opacity and Corners) sit behind **More options** rows that open in place. General holds app setup: Open at Login, the two permissions, and the version. **There is no Save button** — each control writes to `UserDefaults` in its setter, and the next gesture reads it.
+Two even columns. On the left, what it looks like: the live preview on top, the design gallery under it, and the zone-layout switch at the bottom. On the right, the knobs for whatever is selected. Neither column is privileged — both take half the window. **There is no Save button** — each control writes to `UserDefaults` in its setter, and the next gesture reads it.
 
 The preview is not an illustration. It is a `RadialHUDView` and a `PreviewOverlayView` — the same two classes the gesture draws with — on a miniature desktop, with directions resolved by the same `ZoneMath`. Move the pointer across it and it arms, picks zones and highlights destinations exactly as the real gesture does, at actual size. The gallery thumbnails are the same view again at a miniature scale, so a design cannot advertise itself as something other than what it draws.
 
-### The four designs
+### The six designs
 
 Every design answers the same two questions — which of the eight directions is live, and is the maximize target selected — and each carries one parameter of its own. That parameter is remembered per design, so switching away and back does not reset how you had it tuned.
 
 | Design | What it draws | Its own slider |
 |---|---|---|
 | **Segments** | Eight arcs; the live one thickens and tints. The original. | Segment gap |
+| **Wedges** | Filled slices — the zones read as areas, not hints. | Fill |
 | **Dots** | One dot per direction; the live one swells and fills. | Dot size |
+| **Blade** | Only the center target until you commit, then one bar points the way. | Width |
 | **Screen Map** | A miniature screen at the cursor with the destination tile lit. | Map corners |
 | **Halo** | A hairline circle; the live arc glows. | Glow |
 
@@ -234,14 +236,14 @@ Every design answers the same two questions — which of the eight directions is
 |---|---|---|
 | **Color** | 9 swatches + a custom well | The live direction, the lit center target, and optionally the destination tint. `Accent Color` follows the system-wide accent. |
 | **Size** | 32–84 pt | Ring radius — and the screen's width on Screen Map. |
-| **Thickness** | 2–10 pt | Stroke width, under More options. The live element is always 2 pt thicker. |
+| **Thickness** | 2–10 pt | Stroke width. The live element is always 2 pt thicker. |
 | **Show at the pointer** | on/off | Turn the cursor overlay off entirely and snap by direction alone. |
 | **Highlight the destination** | on/off | The tinted rectangle at the target. |
-| **Opacity** | 0.1–1.0 | How solid that rectangle is (under More options). |
-| **Corners** | 0–28 pt | Its corner radius (under More options). |
+| **Opacity** | 0.1–1.0 | How solid that rectangle is. |
+| **Corners** | 0–28 pt | Its corner radius. |
 | **Use the ring color** | on/off | Tint the destination with your color instead of neutral gray. |
 | **Trigger distance** | 8–48 pt | The deadzone: how far the pointer must travel before a direction is chosen, and the size of the center maximize target. |
-| **Open at Login** | on/off | `SMAppService.mainApp`. On the General tab. |
+| **Open at Login** | on/off | `SMAppService.mainApp`. |
 
 **Restore Defaults** at the bottom puts every one of them back — including each design's own parameter — and greys itself out when nothing has been changed.
 
@@ -300,8 +302,10 @@ release. Measured in isolation over 2000 changes per design:
 | Design | Per zone change |
 |---|---|
 | Segments | 0.13 µs |
+| Blade | 0.13 µs |
 | Dots | 0.20 µs |
 | Halo | 0.26 µs |
+| Wedges | 0.53 µs |
 | Screen Map | 0.77 µs |
 
 A full eight-zone sweep of the Segments ring is **0.001 ms**. There is nothing
@@ -353,13 +357,13 @@ between gestures.
 | `main.swift` | Entry point; `.accessory` activation policy (no Dock icon). |
 | `AppDelegate.swift` | Launch-time permission check, status item and menu, reopen handling. |
 | `Settings.swift` | The store: `RingDesign` and its per-design parameters, every other customizable value, UserDefaults persistence, the `Style` snapshot the overlays read, and the login item. |
-| `SettingsView.swift` | The settings window (SwiftUI): the Ring tab's two columns (preview and design gallery on the left, the selected design's controls on the right), plus the Shortcuts and General tabs. |
+| `SettingsView.swift` | The two-column window: preview and design gallery on the left, the selected design's controls on the right (SwiftUI). |
 | `SettingsWindowController.swift` | Its window: transparent titlebar, vibrant background, ⌘W / ⌘Q. |
 | `GesturePreviewView.swift` | The live preview — real ring, real destination tile, real zone math, on a miniature desktop. |
 | `DoweyGlyph.swift` | The circle: menu bar template image and app icon artwork. |
 | `GlobalEventMonitor.swift` | The state machine — Idle → Armed → Tracking → Commit/Cancel — and every event monitor's lifecycle. |
 | `WindowEngine.swift` | Accessibility-API window manipulation; target-screen selection; leaving macOS full screen before a snap; Cocoa ↔ AX coordinate conversion. |
-| `RadialHUDView.swift` | All four ring designs, built from `CAShapeLayer`s and driven by a `Style`. Also `OverlayWindow`, the shared borderless/click-through window used by both overlays. |
+| `RadialHUDView.swift` | All six ring designs, built from `CAShapeLayer`s and driven by a `Style`. Also `OverlayWindow`, the shared borderless/click-through window used by both overlays. |
 | `PreviewOverlayView.swift` | Destination outline and flat tint. |
 | `ZoneMath.swift` | Pure geometry: angle from points, angle → zone, zone → rect, deadzone test. No AppKit state, fully unit-tested. |
 
