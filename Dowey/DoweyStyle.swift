@@ -153,30 +153,53 @@ struct ControlRow<Trailing: View>: View {
     }
 }
 
-/// Title above, then the track with its two end labels. Kept two-line so the
-/// track is long enough to aim with.
+/// Title on the left, track on the right, all on one line. No end labels:
+/// the live preview already shows which way is bigger.
 struct SliderRow: View {
     let title: String
     @Binding var value: Double
     let range: ClosedRange<Double>
-    let low: String
-    let high: String
 
     @Environment(\.isEnabled) private var isEnabled
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(title).font(.system(size: 13))
-            HStack(spacing: 10) {
-                Text(low).frame(minWidth: 40, alignment: .leading)
-                DoweySlider(value: $value, range: range)
-                Text(high).frame(minWidth: 40, alignment: .trailing)
-            }
-            .font(.system(size: 11))
-            .foregroundStyle(.tertiary)
+        ControlRow(title: title) {
+            DoweySlider(value: $value, range: range)
+                .frame(maxWidth: 220)
         }
-        .padding(.vertical, 12)
         .opacity(isEnabled ? 1 : 0.45)
+    }
+}
+
+/// A "More options" row that opens in place to show the knobs most people
+/// set once and never touch again.
+struct MoreOptions<Content: View>: View {
+    var title = "More options"
+    @ViewBuilder var content: Content
+
+    @State private var isExpanded = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Button {
+                withAnimation(.easeOut(duration: 0.18)) { isExpanded.toggle() }
+            } label: {
+                ControlRow(title: title) {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(.tertiary)
+                        .rotationEffect(.degrees(isExpanded ? 90 : 0))
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(title)
+            .accessibilityValue(isExpanded ? "Expanded" : "Collapsed")
+
+            if isExpanded {
+                content
+            }
+        }
     }
 }
 

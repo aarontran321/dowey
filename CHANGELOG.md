@@ -21,8 +21,22 @@ bump.
   hours — never on a timer. It is the only network request Dowey makes, and
   turning it off stops it. **Check Now** runs one on demand.
 
+### Removed
+- **Wedges and Blade ring designs.** Wedges was Segments filled in toward the
+  center, and Blade covered the same "hidden until you move" idea as Halo with
+  less to aim at. Four designs remain: Segments, Halo, Dots and Screen Map. If
+  you had Wedges or Blade selected, Dowey switches to Segments.
+
 ### Changed
-- The version number moved from the bottom of Settings into the update row.
+- **A calmer Settings window.** Sliders take one line each, without end
+  labels. Thickness, and the destination's Opacity and Corners, are behind
+  **More options** rows that open in place. The design gallery is a 2×2 grid.
+- **Show at the pointer** moved next to the design gallery, since it turns the
+  whole ring on or off. **Eight zones** moved to the Gesture panel.
+- The explanatory captions under the preview, the design, the zones and the
+  trigger distance are gone.
+- The first tab is now **Ring**. Open at Login, updates and the permissions
+  moved to a new **General** tab. The version number lives in the update row.
 
 ## [1.4.3] — 2026-11-13
 
