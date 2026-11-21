@@ -66,8 +66,8 @@ struct Style: Equatable {
         mini.ringThickness = max(1.5, ringThickness * factor)
         mini.triggerDistance = max(5, triggerDistance * factor)
         switch design {
-        case .dots, .blade, .map, .halo: mini.detail = max(1, detail * factor)
-        case .segments, .wedges:         break
+        case .dots, .map, .halo: mini.detail = max(1, detail * factor)
+        case .segments:          break
         }
         return mini
     }
@@ -79,16 +79,14 @@ struct Style: Equatable {
 /// which direction is live, and is the maximize target selected —
 /// and each one carries a single parameter of its own.
 enum RingDesign: String, CaseIterable, Identifiable {
-    case segments, wedges, dots, blade, map, halo
+    case segments, halo, dots, map
 
     var id: String { rawValue }
 
     var name: String {
         switch self {
         case .segments: return "Segments"
-        case .wedges:   return "Wedges"
         case .dots:     return "Dots"
-        case .blade:    return "Blade"
         case .map:      return "Screen Map"
         case .halo:     return "Halo"
         }
@@ -97,9 +95,7 @@ enum RingDesign: String, CaseIterable, Identifiable {
     var summary: String {
         switch self {
         case .segments: return "One arc per direction. The one you are pointing at lights up and thickens."
-        case .wedges:   return "Filled slices instead of strokes — the zones read as areas, not hints."
         case .dots:     return "A dot per direction. The live one swells and fills. The quietest design."
-        case .blade:    return "Nothing but the center target until you commit, then one bar points the way."
         case .map:      return "A miniature screen at the cursor with the destination tile lit."
         case .halo:     return "A hairline circle; the live arc glows."
         }
@@ -109,9 +105,7 @@ enum RingDesign: String, CaseIterable, Identifiable {
     var detail: (label: String, range: ClosedRange<Double>, value: Double) {
         switch self {
         case .segments: return ("Segment gap", 0...12, 4)
-        case .wedges:   return ("Fill", 0.15...0.7, 0.42)
         case .dots:     return ("Dot size", 3...12, 5)
-        case .blade:    return ("Width", 6...20, 11)
         case .map:      return ("Map corners", 0...16, 7)
         case .halo:     return ("Glow", 0...18, 14)
         }
@@ -337,7 +331,10 @@ final class Settings: ObservableObject {
 
         let d = Style.default
         design = RingDesign(rawValue: defaults.string(forKey: Key.design) ?? "") ?? d.design
-        details = defaults.dictionary(forKey: Key.details) as? [String: Double] ?? [:]
+        // Tuning saved for a design that has since been removed (Wedges, Blade)
+        // is dropped, or it would keep Restore Defaults lit with nothing to reset.
+        details = (defaults.dictionary(forKey: Key.details) as? [String: Double] ?? [:])
+            .filter { RingDesign(rawValue: $0.key) != nil }
         tint = defaults.string(forKey: Key.tint) ?? Tint.system.rawValue
         ringRadius = Settings.read(defaults, Key.ringRadius, Double(d.ringRadius), Range.ringRadius)
         ringThickness = Settings.read(defaults, Key.ringThickness, Double(d.ringThickness), Range.ringThickness)
