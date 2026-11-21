@@ -6,6 +6,16 @@ the public shape — the gesture, the zone layouts, and the names and meanings
 of the settings — is stable: a breaking change to any of them takes a major
 bump.
 
+## [Unreleased]
+
+### Added
+- **Corners from the keyboard.** Hold 🌐 with two arrows, ↑ + → for top-right,
+  ↓ + ← for bottom-left and so on, in either order.
+- **Pick a window without the mouse.** 🌐 + ⌥ + arrow brings the nearest
+  window in that direction to the front and outlines it. Keep holding 🌐 and
+  press an arrow to snap it, or ⌥ + arrow again to hop to the next one.
+- Both live under Settings → Shortcuts → Advanced, on by default.
+
 ## [1.5.0] — 2026-11-21
 
 ### Added

@@ -242,6 +242,8 @@ final class Settings: ObservableObject {
         /// launch so a choice made under the old name survives the rename.
         static let legacySixZones = "sixZones"
         static let globeShortcuts = "globeShortcuts"
+        static let cornerChords = "cornerChords"
+        static let windowSelection = "windowSelection"
         static let checkForUpdates = "checkForUpdates"
         /// Assigned actions, keyed by `ArrowKey.rawValue`. Only keys the user
         /// has changed are stored; the rest read their default.
@@ -310,6 +312,13 @@ final class Settings: ObservableObject {
     /// which installs or removes the event tap to match.
     @Published var globeShortcutsEnabled: Bool { didSet { commit(globeShortcutsEnabled, Key.globeShortcuts) } }
 
+    /// Two arrows held together (🌐 + ↑ + →) snap to the corner between them.
+    @Published var cornerChords: Bool { didSet { commit(cornerChords, Key.cornerChords) } }
+
+    /// 🌐 + ⌥ + arrow focuses the nearest window that way, so the next
+    /// 🌐 + arrow moves it — picking a window without the mouse.
+    @Published var windowSelection: Bool { didSet { commit(windowSelection, Key.windowSelection) } }
+
     /// Lets the Updater ask GitHub for a newer release. Its only network use.
     @Published var checkForUpdates: Bool { didSet { commit(checkForUpdates, Key.checkForUpdates) } }
 
@@ -324,13 +333,16 @@ final class Settings: ObservableObject {
     }
 
     var shortcutsAreDefault: Bool {
-        globeShortcutsEnabled && ArrowKey.allCases.allSatisfy { shortcut(for: $0) == $0.defaultAction }
+        globeShortcutsEnabled && cornerChords && windowSelection
+            && ArrowKey.allCases.allSatisfy { shortcut(for: $0) == $0.defaultAction }
     }
 
     /// Separate from `resetToDefaults`, which belongs to the appearance tab and
     /// should not quietly rebind keys.
     func resetShortcuts() {
         globeShortcutsEnabled = true
+        cornerChords = true
+        windowSelection = true
         shortcutActions = [:]
     }
 
@@ -359,6 +371,8 @@ final class Settings: ObservableObject {
             eightZones = (d.zoneLayout == .eight)
         }
         globeShortcutsEnabled = defaults.object(forKey: Key.globeShortcuts) as? Bool ?? true
+        cornerChords = defaults.object(forKey: Key.cornerChords) as? Bool ?? true
+        windowSelection = defaults.object(forKey: Key.windowSelection) as? Bool ?? true
         checkForUpdates = defaults.object(forKey: Key.checkForUpdates) as? Bool ?? true
         shortcutActions = defaults.dictionary(forKey: Key.shortcutActions) as? [String: String] ?? [:]
 

@@ -347,6 +347,24 @@ private struct ShortcutsView: View {
                 .disabled(!settings.globeShortcutsEnabled)
                 .opacity(settings.globeShortcutsEnabled ? 1 : 0.45)
 
+                SectionHeader("Advanced").padding(.top, 28)
+                Group {
+                    Panel {
+                        Toggle("Two arrows for corners", isOn: $settings.cornerChords)
+                            .toggleStyle(.dowey)
+                    }
+                    PanelFootnote("Hold 🌐 with ↑ and → for the top-right quarter, ↓ and ← for the bottom-left, and so on. Press the two arrows in either order.")
+
+                    Panel {
+                        Toggle("Pick windows with 🌐 + ⌥ + arrow keys", isOn: $settings.windowSelection)
+                            .toggleStyle(.dowey)
+                    }
+                    .padding(.top, 12)
+                    PanelFootnote("Hold 🌐 and ⌥ and press an arrow to bring the nearest window that way to the front, as clicking it would. It stays outlined while you hold 🌐. Let go of ⌥, keep holding 🌐, and press an arrow to snap it, or keep pressing ⌥ + arrow to hop on to the next one.")
+                }
+                .disabled(!settings.globeShortcutsEnabled)
+                .opacity(settings.globeShortcutsEnabled ? 1 : 0.45)
+
                 HStack {
                     Button("Restore Defaults") { settings.resetShortcuts() }
                         .buttonStyle(DoweyButtonStyle())

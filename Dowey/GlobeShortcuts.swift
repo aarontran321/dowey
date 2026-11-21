@@ -51,10 +51,24 @@ final class GlobeShortcuts {
 
     private var globeDown = false
 
+    /// Arrows down right now with Globe and no other modifier, handled or
+    /// not, by key code. Two of them at right angles make a corner.
+    private var heldArrows: [Int64: Direction] = [:]
+
+    /// The window picked with 🌐 + ⌥ + arrow during this Globe hold. Snaps
+    /// act on it rather than asking which window is focused: activation is
+    /// asynchronous, and an arrow pressed a moment after the pick could
+    /// otherwise reach the window that had focus before it.
+    private var selected: AXUIElement?
+
     /// Called before a snap so the gesture can hand its ring over to the
     /// shortcut: Globe is already down, so the HUD is on screen and would
     /// otherwise maximize on release.
     var willSnap: ((SnapTarget) -> Void)?
+
+    /// Called with a picked window's frame, in Cocoa screen space, so the
+    /// gesture can step aside and outline it.
+    var didSelect: ((CGRect) -> Void)?
 
     var isRunning: Bool { trigger != nil && keyTap != nil }
 
@@ -89,6 +103,8 @@ final class GlobeShortcuts {
         trigger = nil
         keyTap = nil
         swallowed.removeAll()
+        heldArrows.removeAll()
+        selected = nil
         globeDown = false
     }
 
@@ -106,6 +122,10 @@ final class GlobeShortcuts {
             guard event.getIntegerValueField(.keyboardEventKeycode) == Int64(Self.globeKeyCode) else { return }
             // Same rule as the gesture: down iff the fn flag survives the event.
             globeDown = event.flags.contains(.maskSecondaryFn)
+            // Each Globe hold starts fresh: held arrows whose key-up was
+            // missed, and the window picked last time, belong to the last one.
+            heldArrows.removeAll()
+            selected = nil
             updateKeyTap()
         default:
             break
@@ -123,6 +143,7 @@ final class GlobeShortcuts {
 
         case .keyUp:
             let code = event.getIntegerValueField(.keyboardEventKeycode)
+            heldArrows.removeValue(forKey: code)
             guard swallowed.remove(code) != nil else { return event }
             updateKeyTap()
             return nil
@@ -132,14 +153,38 @@ final class GlobeShortcuts {
             if swallowed.contains(code) { return nil } // auto-repeat of a handled press
 
             guard let arrow = Self.arrowForKeyCode[code],
-                  event.flags.intersection(Self.otherModifiers).isEmpty,
                   // Arrow events carry the fn flag whether or not Globe is
                   // held, so the flag proves nothing — ask the hardware.
-                  CGEventSource.keyState(.combinedSessionState, key: Self.globeKeyCode),
-                  let target = Settings.shared.shortcut(for: arrow).target else {
+                  CGEventSource.keyState(.combinedSessionState, key: Self.globeKeyCode) else {
                 return event
             }
+            let settings = Settings.shared
+            let modifiers = event.flags.intersection(Self.otherModifiers)
 
+            // 🌐 + ⌥ + arrow: focus the next window that way.
+            if modifiers == .maskAlternate {
+                guard settings.windowSelection else { return event }
+                swallowed.insert(code)
+                // Off the tap's callback, like a snap: the window list and
+                // the AX lookups would hold every keystroke on the system.
+                DispatchQueue.main.async { [weak self] in self?.select(toward: arrow.direction) }
+                return nil
+            }
+            guard modifiers.isEmpty else { return event }
+
+            // A second arrow at right angles to one already held: the corner
+            // between them. Works in either order, and whether or not the
+            // first arrow had anything assigned.
+            let partner = heldArrows.first { $0.key != code && Direction.corner($0.value, arrow.direction) != nil }
+            heldArrows[code] = arrow.direction
+            if settings.cornerChords, let partner,
+               let corner = Direction.corner(partner.value, arrow.direction) {
+                swallowed.insert(code)
+                DispatchQueue.main.async { [weak self] in self?.snap(to: .zone(corner)) }
+                return nil
+            }
+
+            guard let target = settings.shortcut(for: arrow).target else { return event }
             swallowed.insert(code)
             // Off the tap's callback: the AX calls can take up to a second on
             // a hung app, and every keystroke on the system waits for this
@@ -156,11 +201,62 @@ final class GlobeShortcuts {
         willSnap?(target)
         // The window's own screen, not the cursor's: a keyboard shortcut has
         // no pointer in it, and the window should not jump displays.
-        let anchor = WindowEngine.focusedWindowCenter() ?? NSEvent.mouseLocation
-        WindowEngine.snap(target, at: anchor) { result in
+        let window = selected
+        let anchor = window.flatMap(Self.center(of:)) ?? WindowEngine.focusedWindowCenter() ?? NSEvent.mouseLocation
+        WindowEngine.snap(target, at: anchor, window: window) { result in
             if case .failure(let error) = result {
                 NSLog("Dowey: shortcut to \(target.displayName) failed — \(error.description)")
             }
+        }
+    }
+}
+
+// MARK: - Picking a window
+
+extension GlobeShortcuts {
+
+    /// How many of the best-placed windows to try before giving up. A listed
+    /// window with no AX twin (a helper app's backdrop, say) is skipped, but
+    /// each try is an AX round trip, so the search stops somewhere.
+    private static let selectionAttempts = 6
+
+    /// Focuses the nearest window `direction` of the current one — the one
+    /// picked last in this hold, else the focused window, else the pointer —
+    /// and outlines it. Beeps when there is nothing that way.
+    fileprivate func select(toward direction: Direction) {
+        let current: CGRect
+        if let window = selected ?? WindowEngine.focusedWindow(), let frame = WindowEngine.frame(of: window) {
+            current = frame
+        } else {
+            current = WindowEngine.cocoaToAccessibility(CGRect(origin: NSEvent.mouseLocation, size: .zero))
+        }
+
+        let listed = WindowEngine.listedWindows()
+        let ranked = WindowNavigation.ranked(from: current, toward: direction, among: listed.map(\.frame))
+        for index in ranked.prefix(Self.selectionAttempts) {
+            guard let window = WindowEngine.element(for: listed[index]) else { continue }
+            WindowEngine.focus(window)
+            selected = window
+            didSelect?(WindowEngine.cocoaToAccessibility(listed[index].frame))
+            return
+        }
+        NSSound.beep()
+    }
+
+    fileprivate static func center(of window: AXUIElement) -> CGPoint? {
+        guard let frame = WindowEngine.frame(of: window) else { return nil }
+        let cocoa = WindowEngine.cocoaToAccessibility(frame)
+        return CGPoint(x: cocoa.midX, y: cocoa.midY)
+    }
+}
+
+private extension ArrowKey {
+    var direction: Direction {
+        switch self {
+        case .up:    return .up
+        case .down:  return .down
+        case .left:  return .left
+        case .right: return .right
         }
     }
 }

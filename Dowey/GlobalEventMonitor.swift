@@ -92,6 +92,9 @@ final class GlobalEventMonitor {
     /// Hides the ring after a shortcut has lit it. Never set during a gesture.
     private var flashTimer: Timer?
 
+    /// A window picked with 🌐 + ⌥ + arrow is outlined until Globe goes up.
+    private var outliningSelection = false
+
     private let hud = RadialHUDController()
     private let preview = PreviewOverlayController()
 
@@ -132,6 +135,7 @@ final class GlobalEventMonitor {
         switch (isDown, state.isActive) {
         case (true, false):  arm()
         case (false, true):  commit()
+        case (false, false): hideSelectionOutline()
         default:             break
         }
     }
@@ -139,6 +143,7 @@ final class GlobalEventMonitor {
     private func arm() {
         flashTimer?.invalidate()
         flashTimer = nil
+        outliningSelection = false
         let origin = NSEvent.mouseLocation
         state = .armed(origin: origin)
         style = Settings.shared.style
@@ -265,6 +270,24 @@ final class GlobalEventMonitor {
         flashTimer = timer
     }
 
+    /// A window was picked from the keyboard. As with `flash`, the gesture
+    /// steps aside so letting go of Globe does not maximize it; the picked
+    /// window is outlined, drawn even when destination highlights are off,
+    /// since without it there is no telling which window has the focus.
+    func outlineSelection(_ frame: CGRect) {
+        teardown()
+        var style = Settings.shared.style
+        style.showPreview = true
+        preview.show(rect: frame, style: style)
+        outliningSelection = true
+    }
+
+    private func hideSelectionOutline() {
+        guard outliningSelection else { return }
+        outliningSelection = false
+        preview.hide()
+    }
+
     private func cancel() {
         guard state.isActive else { return }
         teardown()
@@ -282,6 +305,7 @@ final class GlobalEventMonitor {
         releaseWatchdog?.invalidate()
         releaseWatchdog = nil
         preview.hide()
+        outliningSelection = false
         hud.hide()
         cachedScreen = nil
         state = .idle

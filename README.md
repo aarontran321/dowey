@@ -97,6 +97,11 @@ Two behaviors worth knowing:
 
 **Keyboard.** Hold 🌐 and press ↑ to maximize, ← / → for the left / right half. You can rebind each arrow (or turn the whole thing off) in Settings → Shortcuts. The arrow keys are swallowed, so the app underneath never sees them.
 
+- **Corners.** Hold 🌐 with two arrows at right angles for the quarter between them: ↑ + → top-right, ↑ + ← top-left, ↓ + → bottom-right, ↓ + ← bottom-left, pressed in either order.
+- **Picking a window, no mouse.** Hold 🌐 + ⌥ and press an arrow to bring the nearest window that way to the front, as a click would. It stays outlined while you hold 🌐. Let go of ⌥ but not 🌐, and an arrow (or two, for a corner) snaps it. More ⌥ + arrow presses hop window to window. Windows are judged by their centers within a cone, so → from a top-left window finds the top-right one before the bottom-right one. A beep means there is nothing that way.
+
+Both are on by default and can be switched off under Settings → Shortcuts → Advanced.
+
 Minimize is not implemented in v1. Zone angles and the trigger key are hardcoded; the deadzone radius is the **Trigger distance** setting.
 
 ---

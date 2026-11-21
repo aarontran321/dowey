@@ -216,3 +216,70 @@ enum SnapTarget: Equatable {
         }
     }
 }
+
+// MARK: - Corners from two arrows
+
+/// One arrow key's direction, with no AppKit or settings attached.
+enum Direction: CaseIterable {
+    case up, down, left, right
+
+    var isVertical: Bool { self == .up || self == .down }
+
+    /// The corner two held arrows name, or nil when they do not make one
+    /// (the same key twice, or ← with →).
+    static func corner(_ a: Direction, _ b: Direction) -> Zone? {
+        guard a.isVertical != b.isVertical else { return nil }
+        let vertical = a.isVertical ? a : b
+        let horizontal = a.isVertical ? b : a
+        switch (vertical, horizontal) {
+        case (.up, .left):    return .topLeft
+        case (.up, .right):   return .topRight
+        case (.down, .left):  return .bottomLeft
+        case (.down, .right): return .bottomRight
+        default:              return nil
+        }
+    }
+}
+
+// MARK: - Window navigation
+
+/// Which window an arrow points at, from the one that has focus.
+///
+/// Rects are in window-server space — top-left origin, y grows downward —
+/// because that is what both `CGWindowListCopyWindowInfo` and the
+/// Accessibility API hand back, so nothing is flipped on the way in. In this
+/// space `up` means a smaller y.
+enum WindowNavigation {
+
+    /// Indices into `candidates`, best first, of the windows lying `direction`
+    /// of `current`. Judged by center: a window counts if its center is past
+    /// `current`'s along the arrow and no more than twice as far off to the
+    /// side as it is ahead (a ~63° cone each way), so → from a top-left window
+    /// finds the top-right one before the bottom-right one. Off-axis distance
+    /// costs double, which keeps the pick on the row or column you are in.
+    /// Windows centered on `current` (stacked exactly behind it) never count.
+    static func ranked(from current: CGRect,
+                       toward direction: Direction,
+                       among candidates: [CGRect]) -> [Int] {
+        let origin = CGPoint(x: current.midX, y: current.midY)
+
+        let scored: [(index: Int, score: CGFloat)] = candidates.enumerated().compactMap { index, rect in
+            let dx = rect.midX - origin.x
+            let dy = rect.midY - origin.y
+            let ahead: CGFloat
+            let aside: CGFloat
+            switch direction {
+            case .right: ahead = dx;  aside = abs(dy)
+            case .left:  ahead = -dx; aside = abs(dy)
+            case .down:  ahead = dy;  aside = abs(dx)
+            case .up:    ahead = -dy; aside = abs(dx)
+            }
+            guard ahead > 1, aside <= ahead * 2 else { return nil }
+            return (index, ahead + aside * 2)
+        }
+
+        // Ties go to the earlier candidate: callers pass windows front to
+        // back, so of two equally placed windows the one you can see wins.
+        return scored.sorted { ($0.score, $0.index) < ($1.score, $1.index) }.map(\.index)
+    }
+}

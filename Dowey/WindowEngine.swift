@@ -53,6 +53,77 @@ enum WindowEngine {
         return CGPoint(x: frame.midX, y: frame.midY)
     }
 
+    /// The frontmost app's focused window, or nil.
+    static func focusedWindow() -> AXUIElement? {
+        guard AXIsProcessTrusted(), case .success(let window) = focusedWindowOfFrontmostApp() else { return nil }
+        return window
+    }
+
+    // MARK: - Picking a window from the keyboard
+
+    /// A window on the current Space, as the window server lists it.
+    struct ListedWindow {
+        let pid: pid_t
+        /// Window-server space: top-left origin, y-down — the same as AX.
+        let frame: CGRect
+    }
+
+    /// Ordinary app windows on screen now, front to back. Asks only for
+    /// owner and bounds, neither of which needs Screen Recording.
+    static func listedWindows() -> [ListedWindow] {
+        guard let info = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements],
+                                                    kCGNullWindowID) as? [[String: Any]] else { return [] }
+        let me = ProcessInfo.processInfo.processIdentifier
+        return info.compactMap { entry in
+            // Layer 0 is where document windows live; menus, the Dock,
+            // panels and overlays (Dowey's own included) sit above it.
+            guard entry[kCGWindowLayer as String] as? Int == 0,
+                  let pid = entry[kCGWindowOwnerPID as String] as? pid_t, pid != me,
+                  (entry[kCGWindowAlpha as String] as? Double ?? 1) > 0.01,
+                  let bounds = entry[kCGWindowBounds as String] as? NSDictionary,
+                  let frame = CGRect(dictionaryRepresentation: bounds as CFDictionary),
+                  frame.width >= 80, frame.height >= 60 else { return nil }
+            return ListedWindow(pid: pid, frame: frame)
+        }
+    }
+
+    /// The AX element behind a listed window: the window server and AX share
+    /// no ID, so it is matched on owner and frame.
+    static func element(for listed: ListedWindow) -> AXUIElement? {
+        let app = AXUIElementCreateApplication(listed.pid)
+        AXUIElementSetMessagingTimeout(app, 0.5)
+        var value: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(app, kAXWindowsAttribute as CFString, &value) == .success,
+              let windows = value as? [AXUIElement] else { return nil }
+        return windows.first { window in
+            guard let frame = frame(of: window) else { return false }
+            return abs(frame.minX - listed.frame.minX) < 2 && abs(frame.minY - listed.frame.minY) < 2
+                && abs(frame.width - listed.frame.width) < 2 && abs(frame.height - listed.frame.height) < 2
+        }
+    }
+
+    /// Brings `window` and its app to the front, as clicking it would.
+    static func focus(_ window: AXUIElement) {
+        AXUIElementSetMessagingTimeout(window, 1.0)
+        if let app = application(of: window) {
+            // The AX route works from a background app; `activate` alone
+            // can be refused under macOS 14's cooperative activation.
+            AXUIElementSetAttributeValue(app, kAXFrontmostAttribute as CFString, kCFBooleanTrue)
+        }
+        AXUIElementSetAttributeValue(window, kAXMainAttribute as CFString, kCFBooleanTrue)
+        AXUIElementPerformAction(window, kAXRaiseAction as CFString)
+
+        var pid: pid_t = 0
+        if AXUIElementGetPid(window, &pid) == .success,
+           let running = NSRunningApplication(processIdentifier: pid) {
+            if #available(macOS 14.0, *) {
+                running.activate()
+            } else {
+                running.activate(options: .activateIgnoringOtherApps)
+            }
+        }
+    }
+
     // MARK: - Public entry point
 
     /// Moves the frontmost app's focused window to `target`.
@@ -61,8 +132,13 @@ enum WindowEngine {
     /// ignores position and size until it leaves its own Space, so the exit is
     /// asked for first and the frame is applied once the window settles. Every
     /// other window is placed synchronously, before this call returns.
+    ///
+    /// `explicitWindow`, when given, is moved instead of the focused one: a
+    /// window just picked from the keyboard, which the system may not report
+    /// as focused yet.
     static func snap(_ target: SnapTarget,
                      at mouseLocation: CGPoint,
+                     window explicitWindow: AXUIElement? = nil,
                      completion: ((Result<CGRect, WindowEngineError>) -> Void)? = nil) {
         guard AXIsProcessTrusted() else {
             completion?(.failure(.accessibilityNotTrusted))
@@ -70,12 +146,16 @@ enum WindowEngine {
         }
 
         let window: AXUIElement
-        switch focusedWindowOfFrontmostApp() {
-        case .failure(let error):
-            completion?(.failure(error))
-            return
-        case .success(let element):
-            window = element
+        if let explicitWindow {
+            window = explicitWindow
+        } else {
+            switch focusedWindowOfFrontmostApp() {
+            case .failure(let error):
+                completion?(.failure(error))
+                return
+            case .success(let element):
+                window = element
+            }
         }
 
         // A hung target app would otherwise block these (synchronous) AX calls
@@ -199,9 +279,9 @@ enum WindowEngine {
         return .success(element as! AXUIElement)
     }
 
-    /// The window's own frame, in Accessibility coordinates. Used only to watch
-    /// for movement, so it is never converted back.
-    private static func frame(of window: AXUIElement) -> CGRect? {
+    /// The window's own frame, in Accessibility coordinates (top-left origin,
+    /// y-down). `cocoaToAccessibility` converts it back to Cocoa space.
+    static func frame(of window: AXUIElement) -> CGRect? {
         var positionValue: CFTypeRef?
         var sizeValue: CFTypeRef?
         guard AXUIElementCopyAttributeValue(window, kAXPositionAttribute as CFString, &positionValue) == .success,

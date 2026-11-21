@@ -265,4 +265,60 @@ final class ZoneMathTests: XCTestCase {
             }
         }
     }
+
+    // MARK: - Corners from two arrows
+
+    func testTwoArrowsMakeEachCornerInEitherOrder() {
+        let cases: [(Direction, Direction, Zone)] = [
+            (.up, .left, .topLeft), (.up, .right, .topRight),
+            (.down, .left, .bottomLeft), (.down, .right, .bottomRight),
+        ]
+        for (a, b, corner) in cases {
+            XCTAssertEqual(Direction.corner(a, b), corner)
+            XCTAssertEqual(Direction.corner(b, a), corner)
+        }
+    }
+
+    func testOpposingOrRepeatedArrowsMakeNoCorner() {
+        XCTAssertNil(Direction.corner(.left, .right))
+        XCTAssertNil(Direction.corner(.up, .down))
+        XCTAssertNil(Direction.corner(.up, .up))
+    }
+
+    // MARK: - Window navigation
+
+    // A 2×2 grid of quarter windows on a 1000×800 screen, in y-down space.
+    private let topLeft = CGRect(x: 0, y: 0, width: 500, height: 400)
+    private let topRight = CGRect(x: 500, y: 0, width: 500, height: 400)
+    private let bottomLeft = CGRect(x: 0, y: 400, width: 500, height: 400)
+    private let bottomRight = CGRect(x: 500, y: 400, width: 500, height: 400)
+
+    func testArrowStaysOnTheRowOrColumn() {
+        let grid = [topRight, bottomRight, bottomLeft]
+        XCTAssertEqual(WindowNavigation.ranked(from: topLeft, toward: .right, among: grid).first, 0)
+        XCTAssertEqual(WindowNavigation.ranked(from: topLeft, toward: .down, among: grid).first, 2)
+    }
+
+    func testUpMeansSmallerY() {
+        let ranked = WindowNavigation.ranked(from: bottomLeft, toward: .up, among: [topLeft, bottomRight])
+        XCTAssertEqual(ranked, [0])
+    }
+
+    func testNothingBehindOrFarOffAxis() {
+        XCTAssertEqual(WindowNavigation.ranked(from: topRight, toward: .right, among: [topLeft, bottomLeft]), [])
+        // Straight below, a hair to the right: not "right".
+        let below = CGRect(x: 10, y: 600, width: 500, height: 400)
+        XCTAssertEqual(WindowNavigation.ranked(from: topLeft, toward: .right, among: [below]), [])
+    }
+
+    func testStackedWindowIsNeverAPick() {
+        XCTAssertEqual(WindowNavigation.ranked(from: topLeft, toward: .left, among: [topLeft]), [])
+    }
+
+    func testNearestWinsAndTiesGoToTheFrontWindow() {
+        let near = CGRect(x: 500, y: 0, width: 300, height: 400)
+        let far = CGRect(x: 900, y: 0, width: 300, height: 400)
+        XCTAssertEqual(WindowNavigation.ranked(from: topLeft, toward: .right, among: [far, near]), [1, 0])
+        XCTAssertEqual(WindowNavigation.ranked(from: topLeft, toward: .right, among: [near, near]), [0, 1])
+    }
 }
